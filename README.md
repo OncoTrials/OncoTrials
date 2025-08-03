@@ -143,4 +143,4 @@ SUPABASE_SERVICE_ROLE_KEY=...
 * [ ] Patient-Trial Matching Engine
 * [ ] Email Notifications For Relevant Trials
 * [ ] Admin Dashboard for Researchers
-* [ ] Introduce More Endpoints and more!
+* [ ] Introduce New Endpoints and more!
