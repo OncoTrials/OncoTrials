@@ -1,45 +1,33 @@
-import React from 'react'
+import React, {useEffect} from 'react'
 import { useNavigate } from 'react-router-dom'
-import GetStartedDropdown from './buttons/GetStartedDropdown';
+import { Button, Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle } from 'flowbite-react';
+import GetStartedDropdown from './buttons/HomeDropdown';
 
 function HomeNavBar() {
-    const navigate = useNavigate();
+    const DropdownItems = [
+        { path: '/patient-register', label: 'Patient Register' },
+        { path: '/physician-crc-register', label: 'Physician/CRC Register' }
+    ]
+
     return (
         <>
-
-
-            <nav class=" fixed w-full z-20 top-0 start-0 border-b border-gray-600">
-                <div class="max-w-screen flex flex-wrap items-center justify-between mx-auto p-4 px-8">
-                    <a href="http://localhost:5173/" class="flex items-center space-x-3 rtl:space-x-reverse">
-                        <img src={'/vite.svg'} class="h-8" alt="OncoTrials Logo"/>
-                            <span class="self-center text-2xl font-semibold whitespace-nowrap text-black">OncoTrials</span>
-                    </a>
-                    <div class="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
-                        <GetStartedDropdown/>
-
-                        <button data-collapse-toggle="navbar-sticky" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" aria-controls="navbar-sticky" aria-expanded="false">
-                            <span class="sr-only">Open main menu</span>
-                            <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-sticky">
-                        <ul class="flex flex-col p-4 md:p-0 mt-4 font-medium border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white">
-                            <li>
-                                <a href="http://localhost:5173/" class="block py-2 px-3 text-black bg-blue-700 rounded-sm md:bg-transparent md:text-blue-700 md:p-0 md:dark:text-blue-500" aria-current="page">Home</a>
-                            </li>
-                            <li>
-                                <a href="#" class="block py-2 px-3 text-black rounded-sm md:hover:bg-transparent md:hover:text-blue-700 md:p-0  hover:bg-gray-400 hover:text-white  ">About</a>
-                            </li>
-                            <li>
-                                <a href="#" class="block py-2 px-3 text-black rounded-sm  md:hover:bg-transparent md:hover:text-blue-700 md:p-0   hover:bg-gray-400 hover:text-white">Services</a>
-                            </li>                           
-                        </ul>
-                    </div>
+            <Navbar fluid className='!bg-transparent !border-b-1'>
+                <NavbarBrand href="http://localhost:5173/" className="flex items-center space-x-1 rtl:space-x-reverse">
+                    <img src={'/OncoTrials.png'} className="h-10 md:h-15" alt="OncoTrials Logo" />
+                    <span className='self-center whitespace-nowrap text-xl md:text-2xl font-semibold text-black'>OncoTrials</span>
+                </NavbarBrand>
+                <div className='flex md:order-2 gap-2'>
+                    <GetStartedDropdown label={'Get Started'} menuItems={DropdownItems} />
+                    <NavbarToggle className='cursor-pointer'/>
                 </div>
-            </nav>
-
+                <NavbarCollapse>
+                    <NavbarLink href="http://localhost:5173/" active className='hover:underline underline-offset-2 !text-black md:text-lg'>
+                        Home
+                    </NavbarLink>
+                    <NavbarLink href="#" className='hover:underline underline-offset-2 !text-black md:text-lg'>About</NavbarLink>
+                    <NavbarLink href="#" className='hover:underline underline-offset-2 !text-black md:text-lg'>Services</NavbarLink>
+                </NavbarCollapse>
+            </Navbar>
         </>
     )
 }
