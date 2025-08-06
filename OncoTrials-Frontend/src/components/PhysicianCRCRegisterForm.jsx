@@ -1,29 +1,25 @@
 import React, { useState } from 'react';
-import { GoogleLogoIcon, FacebookLogoIcon, XIcon, EyeClosedIcon, EyeIcon, InfoIcon, CheckIcon } from '@phosphor-icons/react'
-import HomeNavBar from './HomeNavBar'
+import { XIcon, EyeClosedIcon, EyeIcon, InfoIcon, CheckIcon } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom';
+import PasswordRequirements from './PasswordRequirements';
 
 function PhysicianCRCRegisterForm() {
     const [isVisible, setIsVisible] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState("");
-    const [successMessage, setSuccessMessage] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
 
 
     const passwordLength = password.length >= 6;
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
-    const hasDigitOrSymbol = /[\d\W]/.test(password);
-
+    const hasDigitAndSymbol = /[0-9]/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password);
     return (
         <div className="flex justify-center items-center min-h-screen animate-fade-down">
-            <HomeNavBar/>
             <div className="max-w-sm w-full rounded-lg shadow-lg bg-white p-6 space-y-6 border border-gray-200 mt-20">
                 <div className="space-y-2 text-center">
                     <h1 className="text-3xl font-bold">Welcome To OncoTrials!</h1>
-                    {/* <p className="text-gray-600 dark:text-gray-400">Please create your account</p> */}
+                    
                 </div>
                 <div className="space-y-4">
                     <div className='flex flex-row items-center justify-center gap-1'>
@@ -57,20 +53,7 @@ function PhysicianCRCRegisterForm() {
                                 <button onClick={() => setIsVisible(!isVisible)} className='absolute right-5 top-9'>{isVisible ? (<EyeClosedIcon/>) : (<EyeIcon/>)}</button>
                             </div>
                         </div>
-                        <div className='space-y-0.5'>
-                            <div className="">
-                                <span className='inline-flex items-center'> {passwordLength ? <CheckIcon size={12} color='green'/> : <XIcon size={12} color='red'/>} <p className='text-xs font-medium text-gray-600'>At least 6 chars.</p></span>
-                            </div>
-                            <div className=" ">
-                                <span className='inline-flex items-center'>{ hasUppercase ? <CheckIcon size={12} color='green'/> : <XIcon size={12} color='red'/>}<p className='text-xs font-medium text-gray-600'>At least 1 uppercase</p></span>
-                            </div>
-                            <div className=" ">
-                                <span className='inline-flex items-center'>{ hasLowercase ? <CheckIcon size={12} color='green'/> : <XIcon size={12} color='red'/>}<p className='text-xs font-medium text-gray-600'>At least 1 lowercase</p></span>
-                            </div>
-                            <div className="">
-                                <span className='inline-flex items-center'>{hasDigitOrSymbol ? <CheckIcon size={12} color='green'/> : <XIcon size={12} color='red'/>}<p className='text-xs font-medium text-gray-600'>At least 1 digit & symbol</p></span>
-                            </div>
-                        </div>
+                        <PasswordRequirements password={password} />
                         <div>
                             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="confirm-password">Role</label>
                             <select 
