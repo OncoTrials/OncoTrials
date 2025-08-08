@@ -1,12 +1,12 @@
 import React from 'react';
 
-const Button = ({ onClick }) => {
+const Button = ({ Text ,onClick }) => {
     return (
         <button
             onClick={onClick}
-            className="flex justify-center gap-1 items-center mx-auto shadow-md text-sm bg-gray-50 backdrop-blur-md lg:font-medium isolation-auto border-gray-50 before:absolute before:w-full before:transition-all before:duration-500 before:hover:w-full before:-left-full before:hover:left-0 before:rounded-full  hover:text-black before:-z-10 before:aspect-square before:hover:scale-125 before:hover:duration-500 relative z-10 px-2 py-1 overflow-hidden border rounded-full group cursor-pointer"
+            className="flex justify-center gap-1 items-center mx-auto shadow-md text-sm bg-gray-50 backdrop-blur-md lg:font-medium isolation-auto border-gray-50 before:absolute before:w-full before:transition-all before:duration-500 before:hover:w-full before:-left-full before:hover:left-0 before:rounded-full  hover:text-black before:-z-10 before:aspect-square before:hover:scale-125 before:hover:duration-500 relative z-10 px-2 py-1 overflow-hidden border rounded-full group cursor-pointer hover:scale-105 transition-all duration-300"
         >
-            View Details
+            {Text}
             <svg
                 className="w-5 h-5 justify-end group-hover:rotate-90 group-hover:bg-gray-50 text-gray-50 ease-linear duration-200 rounded-full border border-gray-700 group-hover:border-none p-1 rotate-45"
                 viewBox="0 0 16 19"
