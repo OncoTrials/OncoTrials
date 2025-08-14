@@ -1,9 +1,9 @@
 import React from 'react'
 import { GoogleLogoIcon } from '@phosphor-icons/react'
 
-function GoogleOAuth() {
+function GoogleOAuth({handleGoogleSignIn}) {
     return (
-        <button className="inline-flex items-center justify-center  text-black hover:cursor-pointer hover:scale-105 transition-all duration-300">
+        <button  onClick={handleGoogleSignIn} className="inline-flex items-center justify-center  text-black hover:cursor-pointer hover:scale-105 transition-all duration-300">
             <div className="flex items-center justify-center">
                 <GoogleLogoIcon size={32} />
             </div>
