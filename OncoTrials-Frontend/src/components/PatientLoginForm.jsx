@@ -18,6 +18,19 @@ const signInUser = async ({ email, password }) => {
     return data;
 }
 
+const signInUserGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: `${window.location.origin}/patient-dashboard`,
+        }
+    });
+
+    if (error) throw error;
+
+    return data;
+}
+
 
 const PatientLoginForm = () => {
     const navigate = useNavigate();
@@ -31,6 +44,7 @@ const PatientLoginForm = () => {
         mutationFn: signInUser,
         onSuccess: (data) => {
             if (data.user) {
+                console.log(data.user);
                 navigate('/patient-dashboard', { replace: true });
             }
         },
@@ -39,6 +53,23 @@ const PatientLoginForm = () => {
             console.error('Login error:', error.message);
         }
     });
+
+    const signInWithGoogleMutation = useMutation({
+        mutationFn: signInUserGoogle,
+        onSuccess: (data) => {
+            if (data.user) {
+                navigate('/patient-dashboard', { replace: true });
+            }
+        },
+        onError: (error) => {
+            setFormError(true);
+            console.error('Google login error:', error.message);
+        }
+    });
+
+    const handleGoogleSignIn = () => {
+        signInWithGoogleMutation.mutate();
+    }
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -124,7 +155,7 @@ const PatientLoginForm = () => {
 
                     <div className='flex flex-row gap-5 justify-center'>
                         <FacebookOAuth />
-                        <GoogleOAuth />
+                        <GoogleOAuth handleGoogleSignIn={handleGoogleSignIn}/>
                     </div>
                     <div className='flex justify-center'>
                         <p className='text-sm'>Don't have an account? <Link to='/patient-register' className='text-blue-400 hover:underline'>Sign Up</Link></p>

@@ -12,6 +12,11 @@ const signUpUser = async ({ email, password }) => {
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options:{
+            data: {
+                role: 'patient'
+            }
+        }
     });
 
     if (error) {
@@ -20,6 +25,7 @@ const signUpUser = async ({ email, password }) => {
 
     return data;
 };
+
 
 
 const PatientRegisterForm = () => {
@@ -48,6 +54,21 @@ const PatientRegisterForm = () => {
             setSignUpError(true);
         },
     });
+
+
+    const handleGoogleSignIn = async () => {
+        try {
+            await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                }
+            });
+        } catch (error) {
+            console.error('Google sign-in error:', error.message);
+            setSignUpError(true);
+        }
+    }
 
 
     const handleSubmit = async (e) => {
@@ -162,7 +183,7 @@ const PatientRegisterForm = () => {
 
                     <div className='flex flex-row gap-5 justify-center'>
                         <FacebookOAuth />
-                        <GoogleOAuth />
+                        <GoogleOAuth handleGoogleSignIn={handleGoogleSignIn} />
                     </div>
 
                     <div className='flex justify-center'>
