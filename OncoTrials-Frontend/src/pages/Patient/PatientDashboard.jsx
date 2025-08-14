@@ -1,41 +1,36 @@
-import React, {useEffect, useState} from 'react'
+import React, { useEffect, useState } from 'react'
 import PatientNavBar from '../../components/PatientNavBar'
 import SearchTrialsForm from './SearchTrialsForm'
 import AddPatientTable from './AddPatientTable'
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-const validateUser = async () => {
-  const response = await supabase.auth.getUser();
+import supabase from '../../utils/SupabaseClient'
+import { useQuery } from '@tanstack/react-query'
 
-  if (!response.data.user) return false;
+const getUserMetadata = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
 
 
-  return response;
+  return user?.user_metadata || null;
 }
+
+
+
 function PatientDashboard() {
   const navigate = useNavigate();
-
   const { data: response, isLoading, isError } = useQuery({
-    queryKey: ['validateUser'],
-    queryFn: validateUser,
+    queryKey: ['getUserMetadata'],
+    queryFn: getUserMetadata,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  console.log(response.data.user.email);
-
-  // Handle navigation in useEffect to avoid setState during render
-  useEffect(() => {
-    if (isError || (!isLoading && (!response || !response.data.user))) {
-      navigate(path, { replace: true });
-    }
-  }, [isError, isLoading, response, navigate]);
+  console.log(response);
 
   return (
     <>
       <div className='flex flex-col min-h-screen animate-fade-down'>
-        <PatientNavBar user_email={response.data.user.email}/>
+        <PatientNavBar user_email={response?.email}/>
         <div className='relative flex top-5 left-5 text-4xl font-semibold'>
         </div>
         <div className='flex flex-row gap-20'>
