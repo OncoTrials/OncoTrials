@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import {BrowserRouter as Router, Routes, Route} from 'react-router-dom';
+import { RequireAuth } from './utils/Auth';
 import HomePage from './pages/HomePage';
 import PatientLoginPage from './pages/Patient/PatientLoginPage';
 import PatientRegister from './pages/Patient/PatientRegister';
@@ -10,7 +10,7 @@ import PatientDashboard from './pages/Patient/PatientDashboard';
 import PatientSettings from './pages/Patient/PatientSettings';
 import ChangePassword from './pages/ChangePassword';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import ProtectedRoute from './utils/Wrapper';
+import AuthCallback from './components/AuthCallback';
 import './App.css'
 
 export const queryClient = new QueryClient();
@@ -28,15 +28,12 @@ function App() {
         <Route path='/physician-crc-login' element={<PhysicianCRCLoginPage/>} />
         <Route path='/forgot-password' element={<ForgotPassword/>} />
         <Route path='/change-password' element={<ChangePassword/>} />
-        {/**
-         * Below this will be protected routes that require authentication
-         */}
-        <Route path='/patient-dashboard' element={<ProtectedRoute path='/patient-login'> <PatientDashboard/> </ProtectedRoute>} />
-        <Route path='/patient-settings' element={<ProtectedRoute path='/patient-login'><PatientSettings/></ProtectedRoute>} />
-
-        {/**
-         * Above this will be protected routes that require authentication
-         */}
+        <Route path='/auth/callback' element={<AuthCallback/>} />
+        {/* Patient only routes */}
+        <Route element={ <RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
+          <Route path='/patient-dashboard' element={<PatientDashboard/>} />
+          <Route path='/patient-settings' element={<PatientSettings/>} />
+        </Route>
       </Routes>
     </Router>
     </QueryClientProvider>
