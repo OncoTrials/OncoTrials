@@ -138,7 +138,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 * [x] Supabase Auth + RLS
 * [x] Manual Trial Creation
-* [ ] Fetch Relevant Trials from ClinicalTrials.gov
+* [x] Fetch Relevant Trials from ClinicalTrials.gov
 * [ ] NGS PDF Upload & Parsing
 * [ ] Patient-Trial Matching Engine
 * [ ] Email Notifications For Relevant Trials
