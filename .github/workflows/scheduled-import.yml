@@ -1,0 +1,28 @@
+name: Scheduled ClinicalTrials Import
+on:
+  schedule:
+    - cron: '0 */1 * * *' # run every hour
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install
+        run: |
+          cd OncoTrials-Backend
+          npm ci
+      - name: Run import script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CTGOV_BASE_URL: ${{ secrets.CTGOV_BASE_URL }}
+          CTGOV_POLL_DELAY_MS: ${{ secrets.CTGOV_POLL_DELAY_MS }}
+        run: |
+          cd OncoTrials-Backend
+          node src/scripts/run_import.js
