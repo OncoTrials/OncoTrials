@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle } from 'flowbite-react';
-import GetStartedDropdown from './buttons/HomeDropdown';
+import GetStartedDropdown from '../buttons/HomeDropdown';
 
 function HomeNavBar() {
     const DropdownItems = [

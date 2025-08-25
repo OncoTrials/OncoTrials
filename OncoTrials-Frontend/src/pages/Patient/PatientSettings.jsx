@@ -1,9 +1,8 @@
 import React, { useState } from 'react'
-import PatientNavBar from '../../components/PatientNavBar'
-import { CameraIcon } from '@phosphor-icons/react';
-import PasswordRequirements from '../../components/PasswordRequirements';
+import PatientNavBar from '../../components/layout/PatientNavBar';
+import PasswordRequirements from '../../components/common/PasswordRequirements';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import CustomAlert from '../../components/Alerts/Alert';
+import CustomAlert from '../../components/common/Alert';
 import supabase from '../../utils/SupabaseClient';
 
 const updateEmail = async ({ email }) => {

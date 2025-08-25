@@ -1,6 +1,6 @@
 import React from 'react'
-import HomeNavBar from '../../components/HomeNavBar'
-import PatientRegisterForm from '../../components/PatientRegisterForm'
+import HomeNavBar from '../../components/layout/HomeNavBar'
+import PatientRegisterForm from '../../components/forms/PatientRegisterForm'
 
 function PatientRegister() {
   return (

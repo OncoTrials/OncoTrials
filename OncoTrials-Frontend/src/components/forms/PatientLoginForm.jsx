@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { GoogleLogoIcon, FacebookLogoIcon, EyeClosedIcon, EyeIcon, XIcon } from '@phosphor-icons/react'
 import { useMutation } from '@tanstack/react-query';
-import supabase from '../utils/SupabaseClient';
-import FacebookOAuth from './buttons/FacebookOAuth';
-import GoogleOAuth from './buttons/GoogleOAuth';
+import supabase from '../../utils/SupabaseClient';
+import FacebookOAuth from '../buttons/FacebookOAuth';
+import GoogleOAuth from '../buttons/GoogleOAuth';
 import { Link, useNavigate } from 'react-router-dom';
-import CustomAlert from './Alerts/Alert';
+import CustomAlert from '../common/Alert';
 
 const signInUser = async ({ email, password }) => {
     const { data, error } = await supabase.auth.signInWithPassword({

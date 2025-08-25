@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GoogleLogoIcon, FacebookLogoIcon, XIcon, EyeClosedIcon, EyeIcon, InfoIcon } from '@phosphor-icons/react'
-import HomeNavBar from './HomeNavBar'
+import HomeNavBar from '../layout/HomeNavBar'
 import { Link } from 'react-router-dom';
 
 function PhysicianCRCLoginForm() {

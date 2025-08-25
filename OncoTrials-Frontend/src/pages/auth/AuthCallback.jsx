@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import supabase from '../utils/SupabaseClient';
+import supabase from '../../utils/SupabaseClient';
 
 export default function AuthCallback() {
     const navigate = useNavigate();
@@ -11,13 +11,18 @@ export default function AuthCallback() {
 
             if (!session) return navigate('/patient-login');
 
-            // Optional: store extra info in  users table
-            await supabase.from('users').upsert({
-                role: session.user.user_metadata?.role || 'patient',
-            });
+            // store role in  users table
+            // await supabase.from('users').upsert({
+            //     role: session.user.user_metadata?.role || 'patient',
+            // });
+
+            //get role from the users table
+            const {data : userRole, error}= await supabase.from('users').select('role').eq('id', session.user.id).single();
+
+            if (error) throw error;
 
             // Redirect based on role
-            const role = session.user.user_metadata?.role || 'patient'; // Replace with actual role from users table
+            const role = session.user.user_metadata?.role || userRole; // Replace with actual role from users table
             if (role === 'patient') navigate('/patient-dashboard', { replace: true });
             else if (role === 'crc') navigate('/crc-dashboard', { replace: true });
             else navigate('/', { replace: true });

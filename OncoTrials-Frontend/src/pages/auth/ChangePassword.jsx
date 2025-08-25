@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { XIcon, EyeClosedIcon, EyeIcon, InfoIcon, CheckIcon } from '@phosphor-icons/react'
-import { Link } from 'react-router-dom';
-import PasswordRequirements from '../components/PasswordRequirements';
-import supabase from '../utils/SupabaseClient';
+import { EyeClosedIcon, EyeIcon } from '@phosphor-icons/react'
+import PasswordRequirements from '../../components/common/PasswordRequirements';
+import supabase from '../../utils/SupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 

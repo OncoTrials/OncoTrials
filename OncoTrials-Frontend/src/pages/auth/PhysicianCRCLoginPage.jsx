@@ -1,6 +1,6 @@
 import React from 'react'
-import PhysicianCRCLoginForm from '../components/PhysicianCRCLoginForm'
-import HomeNavBar from '../components/HomeNavBar'
+import PhysicianCRCLoginForm from '../../components/forms/PhysicianCRCLoginForm'
+import HomeNavBar from '../../components/layout/HomeNavBar'
 
 function PhysicianCRCLoginPage() {
   return (

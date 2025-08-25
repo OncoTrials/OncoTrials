@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import HomeNavBar from '../components/HomeNavBar';
-import supabase from '../utils/SupabaseClient';
+import HomeNavBar from '../../components/layout/HomeNavBar';
+import supabase from '../../utils/SupabaseClient';
 import { useMutation } from '@tanstack/react-query';
-import CustomAlert from '../components/Alerts/Alert';
+import CustomAlert from '../../components/common/Alert';
 
 const sendResetPasswordEmail = async ({ email }) => {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {

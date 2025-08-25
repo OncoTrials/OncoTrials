@@ -1,6 +1,6 @@
 import React from 'react'
 import { GearIcon } from '@phosphor-icons/react'
-import Card from './buttons/NavigationButtons';
+import Card from '../buttons/NavigationButtons';
 import { useNavigate } from 'react-router-dom'
 import { Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle, Dropdown, DropdownHeader, DropdownItem, DropdownDivider, Avatar } from 'flowbite-react';
 

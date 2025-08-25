@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import supabase from './SupabaseClient';
-import LoadingScreen from '../styles/LoadingScreen';
+import LoadingScreen from '../components/common/LoadingScreen';
 import { useQuery } from '@tanstack/react-query';
 
 const fetchUserRole = async (userId) => {

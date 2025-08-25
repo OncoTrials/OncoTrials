@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import PatientNavBar from '../../components/PatientNavBar'
+import PatientNavBar from '../../components/layout/PatientNavBar'
 import SearchTrialsForm from './SearchTrialsForm'
 import AddPatientTable from './AddPatientTable'
 import { useNavigate } from 'react-router-dom'
