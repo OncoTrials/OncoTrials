@@ -22,8 +22,9 @@ export default function AuthCallback() {
             if (error) throw error;
 
             // Redirect based on role
-            const role = session.user.user_metadata?.role || userRole; // Replace with actual role from users table
+            const role = session.user.user_metadata?.role || userRole;
             if (role === 'patient') navigate('/patient-dashboard', { replace: true });
+            else if (role === 'practitioner') navigate('/physician-dashboard', { replace: true });
             else if (role === 'crc') navigate('/crc-dashboard', { replace: true });
             else navigate('/', { replace: true });
         };

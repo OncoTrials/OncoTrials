@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import PasswordRequirements from '../common/PasswordRequirements';
 import { useMutation } from '@tanstack/react-query';
 import supabase from '../../utils/SupabaseClient';
+import CustomAlert from '../common/Alert';
 
 const createUser = async ({ email, password, role }) => {
     const { data, error } = await supabase.auth.signUp({
@@ -119,7 +120,13 @@ function PhysicianCRCRegisterForm() {
                             )}
                         </button>
                     </form>
-
+                    
+                    {createUserMutation.isSuccess && (
+                        <CustomAlert type="success" message="Account created successfully! Please check your email to verify your account." />
+                    )}
+                    {createUserMutation.isError && (
+                        <CustomAlert type="failure" message={createUserMutation.error.message} />
+                    )}
                     <div className='flex justify-center'>
                         <p className='text-sm'>Already have an account? <Link to='/physician-crc-login' className='text-blue-400 hover:underline'>Sign In</Link></p>
                     </div>
