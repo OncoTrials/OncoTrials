@@ -1,6 +1,6 @@
-# 🧬 OncoRadar – Clinical Trial Matching Platform
+# 🧬 OncoTrials – Clinical Trial Matching Platform
 
-OncoRadar is a web-based platform that helps patients discover personalized clinical trials based on their medical history and genomic data. The platform enables patients, practitioners, and physicians to collaborate in advancing cancer treatment through better trial enrollment.
+OncoTrials is a web-based platform that helps patients discover personalized clinical trials based on their medical history and genomic data. The platform enables patients, practitioners, and physicians to collaborate in advancing cancer treatment through better trial enrollment.
 
 ## 🚀 Features
 
@@ -90,7 +90,7 @@ OncoRadar is a web-based platform that helps patients discover personalized clin
 ### Backend
 
 ```bash
-cd oncoradar-backend
+cd OncoTrials-Backend
 npm install
 npm run dev
 ```
@@ -98,7 +98,7 @@ npm run dev
 ### Frontend
 
 ```bash
-cd oncoradar-frontend
+cd OncoTrials-Frontend
 npm install
 npm run dev
 ```
@@ -138,7 +138,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 * [x] Supabase Auth + RLS
 * [x] Manual Trial Creation
-* [ ] Fetch Relevant Trials from ClinicalTrials.gov
+* [x] Fetch Relevant Trials from ClinicalTrials.gov
 * [ ] NGS PDF Upload & Parsing
 * [ ] Patient-Trial Matching Engine
 * [ ] Email Notifications For Relevant Trials
