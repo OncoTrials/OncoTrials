@@ -1,28 +1,74 @@
-name: Scheduled ClinicalTrials Import
+name: Scheduled Trial Import
+
 on:
+  # Run every 2 hours
   schedule:
-    - cron: '0 */1 * * *' # run every hour
+    - cron: '0 */2 * * *'  # "At minute 0 past every 2nd hour"
+  
+  # Allow manual triggering
   workflow_dispatch:
+    inputs:
+      max_pages:
+        description: 'Maximum pages to fetch (0 for unlimited)'
+        required: false
+        default: '0'
+        type: string
+
+# Prevent multiple imports from running simultaneously
+concurrency:
+  group: trial-import
+  cancel-in-progress: false
 
 jobs:
-  import:
+  import-trials:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevent runaway jobs
+    
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      - name: Install
-        run: |
-          cd OncoTrials-Backend
-          npm ci
-      - name: Run import script
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          CTGOV_BASE_URL: ${{ secrets.CTGOV_BASE_URL }}
-          CTGOV_POLL_DELAY_MS: ${{ secrets.CTGOV_POLL_DELAY_MS }}
-        run: |
-          cd OncoTrials-Backend
-          node src/scripts/run_import.js
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run trial import
+      env:
+        # Supabase credentials (store these as repository secrets)
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        
+        # Import configuration
+        IMPORTER_USER_ID: ${{ secrets.IMPORTER_USER_ID }}
+        CTGOV_BASE_URL: "https://beta-ut.clinicaltrials.gov/api/v2/studies"
+        CTGOV_POLL_DELAY_MS: "500"
+        CTGOV_INSERT_BATCH_SIZE: "100"
+        CTGOV_MAX_RETRIES: "3"
+        CTGOV_RETRY_BASE_MS: "500"
+      run: |
+        # Set max_pages from workflow input, default to 0 (unlimited)
+        MAX_PAGES="${{ github.event.inputs.max_pages || '0' }}"
+        
+        # Run the import script
+        node src/scripts/run_import.js
+        
+    - name: Upload import logs
+      uses: actions/upload-artifact@v4
+      if: always()  # Upload logs even if the job fails
+      with:
+        name: import-logs-${{ github.run_number }}
+        path: |
+          *.log
+          import.log
+        retention-days: 7
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Trial import job failed. Check the logs for details."
+        # You could add Slack/email notifications here
