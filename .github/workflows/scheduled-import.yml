@@ -51,8 +51,28 @@ jobs:
         CTGOV_MAX_RETRIES: "3"
         CTGOV_RETRY_BASE_MS: "500"
       run: |
+        # List files to debug directory structure
+        echo "Repository contents:"
+        ls -la
+        echo "Looking for src directory:"
+        find . -name "src" -type d
+        
         # Set max_pages from workflow input, default to 0 (unlimited)
         MAX_PAGES="${{ github.event.inputs.max_pages || '0' }}"
+        
+        # Navigate to backend directory if it exists, then run the import script
+        if [ -d "OncoTrials-Backend" ]; then
+          echo "Found OncoTrials-Backend directory, navigating there..."
+          cd OncoTrials-Backend
+        fi
+        
+        # Verify we can find the script
+        if [ ! -f "src/scripts/run_import.js" ]; then
+          echo "Error: Cannot find src/scripts/run_import.js in current directory"
+          echo "Current directory contents:"
+          ls -la
+          exit 1
+        fi
         
         # Run the import script
         node src/scripts/run_import.js
@@ -71,4 +91,4 @@ jobs:
       if: failure()
       run: |
         echo "Trial import job failed. Check the logs for details."
-        # You could add Slack/email notifications here
+        # TODO: Add Slack/email notifications here
