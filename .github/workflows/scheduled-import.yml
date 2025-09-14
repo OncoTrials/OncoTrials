@@ -64,6 +64,7 @@ jobs:
         if [ -d "OncoTrials-Backend" ]; then
           echo "Found OncoTrials-Backend directory, navigating there..."
           cd OncoTrials-Backend
+          npm install
         fi
         
         # Verify we can find the script
