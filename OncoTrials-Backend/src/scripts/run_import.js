@@ -7,8 +7,8 @@ async function main() {
   console.log(`🚀 Starting trial import at ${startTime.toISOString()}`);
   
   try {
-    // Get maxPages from environment variable (set by GitHub Actions or default to 1 for local testing)
-    const maxPages = process.env.MAX_PAGES ? parseInt(process.env.MAX_PAGES, 10) : 1;
+    // Get maxPages from environment variable (set by GitHub Actions or default to 0 for fetching every page)
+    const maxPages = process.env.MAX_PAGES ? parseInt(process.env.MAX_PAGES, 10) : 0;
     const query = process.env.CTGOV_QUERY || '';
     
     console.log(`Configuration:
