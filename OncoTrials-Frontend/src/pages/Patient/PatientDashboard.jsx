@@ -13,6 +13,15 @@ const getUserMetadata = async () => {
   return user?.user_metadata || null;
 }
 
+const getAllTrials = async () => {
+  const { data, error } = await supabase
+    .from('trials')
+    .select('*');
+
+  if (error) throw error;
+  return data;
+}
+
 
 
 function PatientDashboard() {
@@ -25,32 +34,31 @@ function PatientDashboard() {
     refetchOnWindowFocus: false,
   });
 
-  console.log(response);
+  const { data: trials } = useQuery({
+    queryKey: ['getAllTrials'],
+    queryFn: getAllTrials,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+
+  const [filteredTrials, setFilteredTrials] = useState([]);
+
 
   return (
     <>
-      <div className='flex flex-col min-h-screen animate-fade-down'>
-        <PatientNavBar user_email={response?.email}/>
-        <div className='relative flex top-5 left-5 text-4xl font-semibold'>
+    <div>
+      <PatientNavBar user_email={response?.email}/>
+      <div className='flex gap-4 pr-3 pl-3 mt-5 min-h-[650px]'>
+        <div className='sw-96 border border-gray-300 shadow-2xl rounded-2xl p-4'>
+          <SearchTrialsForm trials={trials} onFilter={setFilteredTrials}/>
         </div>
-        <div className='flex flex-row gap-20'>
-          <div className='flex flex-col mt-10 ml-5 justify-start'>
-            <div className=' w-80 h-5/6 p-5 rounded-lg shadow-xl border border-gray-600'>
-              <h2 className='text-3xl font-semibold'>Search Trials</h2>
-              <SearchTrialsForm />
-            </div>
-          </div>
-          {/* Trials table */}
-          <div className='flex flex-col mt-10 items-center justify-start'>
-            <div className='w-full max-w-6xl p-5 rounded-2xl shadow-2xl border border-gray-600 overflow-x-auto'>
-              <h2 className='text-3xl font-semibold'>Trials Table</h2>
-              <AddPatientTable />
-            </div>
-          </div>
-
+        <div className='flex-1 shadow-2xl border overflow-auto border-gray-300 rounded-lg'>
+          <AddPatientTable trials={filteredTrials.length > 0 ? filteredTrials : []} />
         </div>
-
       </div>
+    </div>
     </>
   )
 }

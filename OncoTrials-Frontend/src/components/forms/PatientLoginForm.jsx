@@ -22,7 +22,7 @@ const signInUserGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: `${window.location.origin}/patient-dashboard`,
+            redirectTo: `${window.location.origin}/auth/callback`,
         }
     });
 
@@ -57,8 +57,9 @@ const PatientLoginForm = () => {
     const signInWithGoogleMutation = useMutation({
         mutationFn: signInUserGoogle,
         onSuccess: (data) => {
+            console.log(data);
             if (data.user) {
-                navigate('/patient-dashboard', { replace: true });
+                navigate('/auth/callback', { replace: true });
             }
         },
         onError: (error) => {
