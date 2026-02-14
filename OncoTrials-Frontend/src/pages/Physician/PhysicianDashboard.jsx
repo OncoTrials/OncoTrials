@@ -40,6 +40,8 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
+    //console.log(trials);
+
     // console.log(trials);
 
     const [filteredTrials, setFilteredTrials] = useState([]);
