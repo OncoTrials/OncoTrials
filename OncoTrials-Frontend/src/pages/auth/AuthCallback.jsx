@@ -15,14 +15,19 @@ export default function AuthCallback() {
 
             //get role from the users table
             const {data : userRole, error}= await supabase.from('users').select('role').eq('id', session.user.id).single();
+            const {data : completed, error: completionError}= await supabase.from('users').select('completedIntakeForm').eq('id', session.user.id).single();
 
             if (error) throw error;
+            if (completionError) throw completionError;
+            
 
 
             // Redirect based on role
             const role = session.user.user_metadata?.role || userRole;
+            console.log(role.role, completed.completedIntakeForm);
             
-            if (role.role === 'patient') navigate('/patient-dashboard', { replace: true });
+            if (role.role === 'patient' && completed.completedIntakeForm === true) navigate('/patient-dashboard', { replace: true });
+            if (role.role === 'patient' && completed.completedIntakeForm === false) navigate('/patient-intake', {replace:true});
             else if (role === 'practitioner') navigate('/physician-dashboard', { replace: true });
             else if (role === 'crc') navigate('/crc-dashboard', { replace: true });
             else navigate('/', { replace: true });

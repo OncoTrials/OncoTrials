@@ -34,6 +34,7 @@ function PhysicianCRCRegisterForm() {
             setEmail('');
             setPassword('');
             setRole('');
+            
         },
         onError: (error) => {
             console.error('Error creating user:', error.message);

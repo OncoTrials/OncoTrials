@@ -44,6 +44,7 @@ const PatientLoginForm = () => {
         mutationFn: signInUser,
         onSuccess: (data) => {
             if (data.user) {
+                console.log(data.user);
                 navigate('/patient-dashboard', { replace: true });
             }
         },

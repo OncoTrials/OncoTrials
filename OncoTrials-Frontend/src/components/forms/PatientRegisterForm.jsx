@@ -7,6 +7,7 @@ import FacebookOAuth from '../buttons/FacebookOAuth';
 import GoogleOAuth from '../buttons/GoogleOAuth';
 import PasswordRequirements from '../common/PasswordRequirements.jsx';
 import CustomAlert from '../common/Alert';
+import { useNavigate } from 'react-router-dom';
 
 const signUpUser = async ({ email, password }) => {
     const { data, error } = await supabase.auth.signUp({
@@ -40,6 +41,8 @@ const PatientRegisterForm = () => {
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const hasDigitAndSymbol = /[0-9]/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    const navigate = useNavigate();
 
     const signUpMutation = useMutation({
         mutationFn: signUpUser,
