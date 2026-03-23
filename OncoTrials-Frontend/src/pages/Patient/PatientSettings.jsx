@@ -5,46 +5,83 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import CustomAlert from '../../components/common/Alert';
 import supabase from '../../utils/SupabaseClient';
 
+/* ─── Supabase helpers (unchanged) ─────────────────────────────────── */
 const updateEmail = async ({ email }) => {
-  const { data, error } = await supabase.auth.updateUser({
-    email: email,
-  });
-
+  const { data, error } = await supabase.auth.updateUser({ email });
   if (error) throw error;
-
   return data;
-}
+};
 
 const updatePassword = async ({ password }) => {
-  const { data, error } = await supabase.auth.updateUser({
-    password: password,
-  });
-
+  const { data, error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
-
   return data;
-}
+};
 
 const getUserMetadata = async () => {
   const { data: { user } } = await supabase.auth.getUser();
-
-
   return user?.user_metadata || null;
-}
+};
 
+/* ─── Reusable sub-components ────────────────────────────────────────── */
+const Field = ({ label, children }) => (
+  <div className="flex flex-col gap-1.5">
+    <label className="text-xs font-semibold tracking-widest uppercase text-slate-400">
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+const Input = ({ type = 'text', value, onChange, placeholder, disabled }) => (
+  <input
+    type={type}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    disabled={disabled}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-sm placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-900/20 focus:border-blue-900 focus:bg-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+  />
+);
+
+const PrimaryButton = ({ onClick, loading, loadingText, children, fullWidth }) => (
+  <button
+    onClick={onClick}
+    className={`
+      ${fullWidth ? 'w-full' : ''}
+      inline-flex items-center justify-center gap-2
+      px-6 py-2.5 rounded-xl
+      bg-blue-950 hover:bg-blue-900 active:scale-95
+      text-white text-sm font-medium tracking-wide
+      shadow-md hover:shadow-lg
+      transition-all duration-200 cursor-pointer
+    `}
+  >
+    {loading ? (
+      <>
+        <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+        {loadingText}
+      </>
+    ) : children}
+  </button>
+);
+
+const SectionDivider = () => (
+  <div className="flex items-center gap-3 my-1">
+    <div className="flex-1 h-px bg-slate-100" />
+    <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+    <div className="flex-1 h-px bg-slate-100" />
+  </div>
+);
+
+/* ─── Main component ─────────────────────────────────────────────────── */
 function PatientSettings() {
   const [activeTab, setActiveTab] = useState('profile');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    newPassword: '',
-  });
+  const [formData, setFormData] = useState({ name: '' });
   const [emailResponse, setEmailResponse] = useState('');
   const [passwordResponse, setPasswordResponse] = useState('');
-  const [userData, setUserData] = useState(null);
 
   const updateEmailMutation = useMutation({
     mutationFn: updateEmail,
@@ -52,228 +89,190 @@ function PatientSettings() {
       setEmailResponse('Please check your email for the verification link to confirm the change.');
       setEmail('');
     },
-    onError: (error) => {
-      setEmailResponse(`${error.message}`);
-    }
+    onError: (error) => setEmailResponse(error.message),
   });
-
-  const handleUpdateEmail = () => {
-    if (!email) {
-      setEmailResponse('Please enter a valid email address.');
-      return;
-    }
-    updateEmailMutation.mutate({ email });
-  }
-
-  const handleUpdatePassword = () => {
-    if (!password) {
-      setPasswordResponse('Please enter a valid password.');
-      return;
-    }
-    updatePasswordMutation.mutate({ password });
-  }
-
-  const handleClose = () => {
-    setEmailResponse('');
-    setPasswordResponse('');
-  }
 
   const updatePasswordMutation = useMutation({
     mutationFn: updatePassword,
-    onSuccess: () => {
-      setPasswordResponse('Password updated successfully');
-    },
-    onError: (error) => {
-      setPasswordResponse(`${error.message}`);
-    }
+    onSuccess: () => setPasswordResponse('Password updated successfully'),
+    onError: (error) => setPasswordResponse(error.message),
   });
 
-  const { data: response, isLoading, isError } = useQuery({
+  const { data: response } = useQuery({
     queryKey: ['getUserMetadata'],
     queryFn: getUserMetadata,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
+  const handleUpdateEmail = () => {
+    if (!email) { setEmailResponse('Please enter a valid email address.'); return; }
+    updateEmailMutation.mutate({ email });
+  };
 
+  const handleUpdatePassword = () => {
+    if (!password) { setPasswordResponse('Please enter a valid password.'); return; }
+    updatePasswordMutation.mutate({ password });
+  };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  }
+  const handleClose = () => { setEmailResponse(''); setPasswordResponse(''); };
 
-  const TabButton = ({ tab, isActive, onClick }) => {
-    return (
-      <button
-        className={`
-          relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 ease-in-out cursor-pointer
-          ${isActive
-            ? 'bg-blue-600 text-white shadow-lg transform scale-105'
-            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-          }
-        `}
-        onClick={onClick}
-      >
-        {tab.label}
-      </button>
-    );
-  }
+  const tabs = [
+    { id: 'profile', label: 'Profile' },
+    { id: 'security', label: 'Security' },
+  ];
 
+  /* ── Profile tab ── */
   const profileSettings = () => (
-    <div className='w-full p-5 rounded-lg shadow-xl border border-gray-600'>
-      <div className='flex flex-col items-center justify-center space-y-3'>
-        <div className='flex items-center justify-center'>
-          <div className='rounded-full w-32 h-32 bg-blue-600'>
-            <div className='flex items-center justify-center h-full w-full text-white text-6xl'>
-              JM
-            </div>
-          </div>
+    <div className="flex flex-col items-center gap-6">
+      {/* Avatar with gradient ring */}
+      <div className="p-0.5 rounded-full bg-gradient-to-br from-amber-400 to-blue-950 shadow-lg mt-1">
+        <div className="w-24 h-24 rounded-full bg-blue-950 flex items-center justify-center">
+          <span className="text-white text-2xl font-semibold tracking-widest">JM</span>
         </div>
       </div>
 
-      <form className='mt-5 space-y-4'>
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-1'>
-            Name
-          </label>
-          <input
-            type='text'
-            name='name'
+      <p className="text-xs font-semibold tracking-widest uppercase text-amber-500 -mt-2">
+        Patient Profile
+      </p>
+
+      {/* Decorative separator */}
+      <div className="w-full h-px bg-gradient-to-r from-transparent via-amber-200 to-transparent" />
+
+      <div className="w-full flex flex-col gap-4">
+        <Field label="Full Name">
+          <Input
             value={formData.name}
-            onChange={handleInputChange}
-            placeholder='Input text'
-            className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Enter your full name"
           />
-        </div>
-        <button className='w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors'>
+        </Field>
+
+        <PrimaryButton fullWidth>
           Save Changes
-        </button>
-      </form>
-    </div>
-  )
-
-  const securitySettings = () => (
-    <div className='w-full max-w-md space-y-6'>
-      {/* Email Section */}
-      <div>
-        <h3 className='text-lg font-semibold mb-2'>Email</h3>
-        <p className='text-sm text-gray-600 mb-3'>
-          Update your email address. We'll send a verification link to confirm the change.
-        </p>
-        <div className='space-y-2'>
-          <label className='block text-sm font-medium text-gray-700'>
-            Email
-          </label>
-          <input
-            type='email'
-            name='email'
-            value={email}
-            disabled={updateEmailMutation.isPending}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder='Input email'
-            className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-          />
-          <button onClick={() => handleUpdateEmail()} className='bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors cursor-pointer'>
-            <div className='flex items-center justify-center'>
-              {updateEmailMutation.isPending ? (<> <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Updating Email... </>) : 'Update Email'}
-            </div>
-          </button>
-          {updateEmailMutation.isError && <CustomAlert type={'failure'} message={emailResponse} onClose={handleClose} />}
-          {updateEmailMutation.isSuccess && <CustomAlert type={'success'} message={emailResponse} onClose={handleClose} />}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <hr className='border-gray-300' />
-
-      {/* Password Section */}
-      <div>
-        <h3 className='text-lg font-semibold mb-2'>Password</h3>
-        <div className='space-y-3'>
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
-              New Password
-            </label>
-            <input
-              type='password'
-              name='password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={updatePasswordMutation.isPending}
-              placeholder='Input password'
-              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-            />
-          </div>
-          <PasswordRequirements password={password} />
-
-          <button onClick={() => handleUpdatePassword()} className='bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors cursor-pointer'>
-            <div className='flex items-center justify-center'>
-              {updatePasswordMutation.isPending ? (<> <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Updating Password... </>) : 'Update Password'}
-            </div>
-
-          </button>
-          {updatePasswordMutation.isError && <CustomAlert type={'failure'} message={passwordResponse} onClose={handleClose} />}
-          {updatePasswordMutation.isSuccess && <CustomAlert type={'success'} message={passwordResponse} onClose={handleClose} />}
-        </div>
+        </PrimaryButton>
       </div>
     </div>
   );
 
-  const tabs = [
-    {
-      id: 'profile',
-      label: 'Profile',
-    },
-    {
-      id: 'security',
-      label: 'Security',
-    },
-  ]
+  /* ── Security tab ── */
+  const securitySettings = () => (
+    <div className="flex flex-col gap-5">
+      {/* Email */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <div className="w-8 h-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-200 mb-3" />
+          <h3 className="text-lg font-semibold text-blue-950">Email Address</h3>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            Update your email address. A verification link will be sent to confirm the change.
+          </p>
+        </div>
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return profileSettings();
-      case 'security':
-        return securitySettings();
-      default:
-        return profileSettings();
-    }
-  }
+        <Field label="New Email">
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            disabled={updateEmailMutation.isPending}
+          />
+        </Field>
+
+        <PrimaryButton
+          onClick={handleUpdateEmail}
+          loading={updateEmailMutation.isPending}
+          loadingText="Updating…"
+        >
+          Update Email
+        </PrimaryButton>
+
+        {updateEmailMutation.isError && <CustomAlert type="failure" message={emailResponse} onClose={handleClose} />}
+        {updateEmailMutation.isSuccess && <CustomAlert type="success" message={emailResponse} onClose={handleClose} />}
+      </div>
+
+      <SectionDivider />
+
+      {/* Password */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-blue-950">Password</h3>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            Choose a strong password to keep your account secure.
+          </p>
+        </div>
+
+        <Field label="New Password">
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••••"
+            disabled={updatePasswordMutation.isPending}
+          />
+        </Field>
+
+        <PasswordRequirements password={password} />
+
+        <PrimaryButton
+          onClick={handleUpdatePassword}
+          loading={updatePasswordMutation.isPending}
+          loadingText="Updating…"
+        >
+          Update Password
+        </PrimaryButton>
+
+        {updatePasswordMutation.isError && <CustomAlert type="failure" message={passwordResponse} onClose={handleClose} />}
+        {updatePasswordMutation.isSuccess && <CustomAlert type="success" message={passwordResponse} onClose={handleClose} />}
+      </div>
+    </div>
+  );
 
   return (
-    <>
-      <div className='flex flex-col min-h-screen animate-fade-down'>
-      <PatientNavBar user_email={response?.email}/>
-        <div className='relative flex top-5 left-5 text-4xl font-semibold'>
-          <h1>Profile Settings</h1>
-        </div>
+    <div className="min-h-screen bg-slate-50 animate-fade-down">
+      <PatientNavBar user_email={response?.email} />
 
-        <div className='flex flex-col items-center justify-center mt-6 h-dvh space-y-5'>
-          {/* Tab Navigation */}
-          <div className='flex flex-row space-x-2 bg-gray-100 p-1 rounded-xl shadow-inner'>
-            {tabs.map(tab => (
-              <TabButton
-                key={tab.id}
-                tab={tab}
-                isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              />
-            ))}
-          </div>
-
-          {/* Tab Content */}
-          <div className='w-full max-w-lg p-6 bg-white rounded-lg shadow-xl border border-gray-200'>
-            {renderTabContent()}
-          </div>
-        </div>
+      {/* Page header */}
+      <div className="px-8 pt-10">
+        <p className="text-xs font-semibold tracking-widest uppercase text-slate-400 mb-1">
+          Account Management
+        </p>
+        <h1 className="text-4xl font-bold text-blue-950 tracking-tight">
+          Profile Settings
+        </h1>
       </div>
-    </>
-  )
+
+      {/* Centered layout */}
+      <div className="flex flex-col items-center gap-6 px-4 py-10">
+
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-full p-1 shadow-sm">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                px-7 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-200 cursor-pointer
+                ${activeTab === tab.id
+                  ? 'bg-blue-950 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+                }
+              `}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Card */}
+        <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-100 p-8">
+          {activeTab === 'profile' && profileSettings()}
+          {activeTab === 'security' && securitySettings()}
+        </div>
+
+      </div>
+    </div>
+  );
 }
 
-export default PatientSettings
+export default PatientSettings;

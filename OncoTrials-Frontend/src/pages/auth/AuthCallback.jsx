@@ -24,10 +24,12 @@ export default function AuthCallback() {
 
             // Redirect based on role
             const role = session.user.user_metadata?.role || userRole;
-            console.log(role.role, completed.completedIntakeForm);
+            console.log(role, completed.completedIntakeForm);
             
-            if (role.role === 'patient' && completed.completedIntakeForm === true) navigate('/patient-dashboard', { replace: true });
-            if (role.role === 'patient' && completed.completedIntakeForm === false) navigate('/patient-intake', {replace:true});
+            if (role?.role === 'patient' && completed.completedIntakeForm === true) navigate('/patient-dashboard', { replace: true });
+            if (role === 'patient' && completed.completedIntakeForm === true) navigate('/patient-dashboard', { replace: true });
+            else if (role === 'patient' && completed.completedIntakeForm === false) navigate('/patient-intake', {replace:true})
+            else if (role?.role === 'patient' && completed.completedIntakeForm === false) navigate('/patient-intake', {replace:true});
             else if (role === 'practitioner') navigate('/physician-dashboard', { replace: true });
             else if (role === 'crc') navigate('/crc-dashboard', { replace: true });
             else navigate('/', { replace: true });

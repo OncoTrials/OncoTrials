@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import supabase from '../../utils/SupabaseClient';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 const AUTOSAVE_KEY = 'patient_intake_draft';
 
@@ -6,13 +9,13 @@ const initialFormState = {
     full_name: '',
     dob: '',
     gender: '',
-    phone: '',
-    email: '',
+    phone_number: '',
     location: '',
     diagnosis: '',
     ecog_score: '',
     biomarkers: '',
-    notes: '',
+    prior_treatment: '',
+    line_of_treatment: '',
 };
 
 const sections = [
@@ -20,13 +23,13 @@ const sections = [
         id: 'personal',
         label: 'Personal',
         icon: '○',
-        fields: ['full_name', 'dob', 'gender', 'phone', 'email', 'location'],
+        fields: ['full_name', 'dob', 'gender', 'phone_number', 'location'],
     },
     {
         id: 'clinical',
         label: 'Clinical',
         icon: '□',
-        fields: ['diagnosis', 'ecog_score', 'biomarkers', 'allergies', 'current_medications', 'notes'],
+        fields: ['diagnosis', 'ecog_score', 'biomarkers', 'prior_treatment', 'line_of_treatment'],
     },
 ];
 
@@ -43,8 +46,30 @@ const fieldConfig = {
             { value: 'Prefer not to say', label: 'Prefer not to say' },
         ]
     },
-    phone: { label: 'Phone', type: 'tel', placeholder: '+1 (555) 000-0000', span: 1 },
-    email: { label: 'Email', type: 'email', placeholder: 'patient@email.com', span: 1 },
+    phone_number: { label: 'Phone', type: 'tel', placeholder: '+1 (555) 000-0000', span: 1 },
+    prior_treatment: {
+        label: 'Prior Treatment',
+        type: 'select',
+        placeholder: 'Yes or No',
+        span: 1,
+        options: [
+            { value: '', label: 'Select' },
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+        ]
+    },
+    prior_treatment: {
+        label: 'Line Of Treatment',
+        type: 'select',
+        placeholder: '1st line, 2nd line, or 3rd line',
+        span: 1,
+        options: [
+            { value: '', label: 'Select' },
+            { value: '1st', label: '1st line' },
+            { value: '2nd', label: '2nd line' },
+            { value: '3rd', label: '3rd line' },
+        ]
+    },
     location: { label: 'City / Location', type: 'text', placeholder: 'New York, NY', span: 2 },
     diagnosis: { label: 'Diagnosis', type: 'text', placeholder: 'e.g. Non-small cell lung carcinoma', span: 2 },
     ecog_score: {
@@ -74,10 +99,38 @@ export default function PatientIntakeForm({ isOpen = true, onClose = () => { }, 
     const [activeSection, setActiveSection] = useState('personal');
     const [status, setStatus] = useState(null); // 'success' | 'error' | null
     const [errorMsg, setErrorMsg] = useState('');
-    const [isPending, setIsPending] = useState(false);
+    //const [isPending, setIsPending] = useState(false);
     const [visited, setVisited] = useState({ personal: true, clinical: false });
     const [lastSaved, setLastSaved] = useState(null);
     const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem(AUTOSAVE_KEY));
+
+    const insertPatient = async ({formData, userId}) => {
+        const { data, error } = await supabase.from('patients').insert([
+
+            {
+                patient_id: userId,
+                full_name: formData.full_name,
+                dob: formData.dob,
+                gender: formData.gender,
+                phone_number: formData.phone_number,
+                location: formData.location,
+                diagnosis: formData.diagnosis,
+                ecog_score: formData.ecog_score,
+                biomarkers: formData.biomarkers,
+                prior_treatment: formData.prior_treatment === 'yes' ? true : false
+            }
+        ]);
+
+        if (error) throw error;
+        return data;
+    }
+
+    const navigate = useNavigate();
+
+    const mutation = useMutation({
+        mutationFn: insertPatient
+    });
+
 
     // Auto-save to localStorage on every formData change
     useEffect(() => {
@@ -119,26 +172,33 @@ export default function PatientIntakeForm({ isOpen = true, onClose = () => { }, 
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsPending(true);
-        setStatus(null);
+        e.preventDefault()
+        setStatus(null)
+
         try {
-            if (onSubmit) {
-                await onSubmit(formData);
-            } else {
-                await new Promise(r => setTimeout(r, 1000));
-            }
-            localStorage.removeItem(AUTOSAVE_KEY);
-            setHasDraft(false);
-            setStatus('success');
-            setTimeout(() => onClose(), 1800);
+            const { data: { user } } = await supabase.auth.getUser();
+            await mutation.mutateAsync({formData, userId: user.id});
+            
+            const { error: updateError } = await supabase
+            .from('users')
+            .update({ completedIntakeForm: true })
+            .eq('id', user.id);
+
+            if (updateError) throw updateError;
+
+            localStorage.removeItem(AUTOSAVE_KEY)
+            setHasDraft(false)
+            setStatus('success')
+
+            setTimeout(() => onClose(), 3000);
+
+            navigate('/auth/callback', {replace: true});
+
         } catch (err) {
-            setErrorMsg(err?.message || 'An error occurred. Please try again.');
-            setStatus('error');
-        } finally {
-            setIsPending(false);
-        }
-    };
+            setErrorMsg(err.message || 'Failed to save patient')
+            setStatus('error')
+        } 
+    }
 
     const currentSection = sections.find(s => s.id === activeSection);
     const currentFields = currentSection?.fields || [];
@@ -218,11 +278,8 @@ export default function PatientIntakeForm({ isOpen = true, onClose = () => { }, 
                     <div className="bg-gradient-to-br from-sky-500 to-blue-600 px-8 pt-7 pb-6">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sky-200 text-xs font-semibold tracking-widest uppercase mb-1.5">
-                                    New Enrollment
-                                </p>
                                 <h2 className="serif text-white text-2xl font-normal m-0">
-                                    Patient Intake Form
+                                    Patient Onboarding Form
                                 </h2>
                                 {/* Auto-save indicator */}
                                 <div className="flex items-center gap-3 mt-1.5">
@@ -254,6 +311,7 @@ export default function PatientIntakeForm({ isOpen = true, onClose = () => { }, 
                         <div className="flex gap-2 mt-5">
                             {sections.map((s, i) => (
                                 <button
+                                    type='button'
                                     key={s.id}
                                     onClick={() => goToSection(s.id)}
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 cursor-pointer
@@ -318,7 +376,7 @@ export default function PatientIntakeForm({ isOpen = true, onClose = () => { }, 
                                             ← Back
                                         </button>
                                     )}
-                                    {!isLast ? (
+                                    {!isLast && (
                                         <button
                                             type="button"
                                             onClick={() => goToSection(sections[currentIdx + 1].id)}
@@ -326,13 +384,14 @@ export default function PatientIntakeForm({ isOpen = true, onClose = () => { }, 
                                         >
                                             Continue →
                                         </button>
-                                    ) : (
+                                    )} 
+                                    {isLast && (
                                         <button
                                             type="submit"
-                                            disabled={isPending}
+                                            disabled={mutation.isPending}
                                             className="px-6 py-2 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer border-0"
                                         >
-                                            {isPending ? 'Saving…' : 'Submit Patient'}
+                                            {mutation.isPending ? 'Saving…' : 'Submit Patient'}
                                         </button>
                                     )}
                                 </div>

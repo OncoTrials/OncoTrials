@@ -1,30 +1,34 @@
 import React from "react";
 import { DotsThreeCircleIcon, ArrowCircleLeftIcon, ArrowCircleRightIcon } from "@phosphor-icons/react";
 
+const STATUS_CONFIG = {
+    recruiting: { label: "Recruiting", classes: "bg-green-50 text-green-700 ring-1 ring-green-200" },
+    available: { label: "Available", classes: "bg-green-50 text-green-700 ring-1 ring-green-200" },
+    not_yet_recruiting: { label: "Not Yet Recruiting", classes: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
+    withheld: { label: "Withheld", classes: "bg-red-50 text-red-700 ring-1 ring-red-200" },
+    no_longer_available: { label: "No Longer Available", classes: "bg-red-50 text-red-700 ring-1 ring-red-200" },
+    enrolling_by_invitation: { label: "By Invitation", classes: "bg-blue-50 text-blue-700 ring-1 ring-blue-200" },
+};
+
+function StatusBadge({ status }) {
+    const key = status?.toLowerCase();
+    const config = STATUS_CONFIG[key];
+    const label = config?.label ?? (status?.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) || "Unknown");
+    const classes = config?.classes ?? "bg-gray-100 text-gray-600 ring-1 ring-gray-200";
+
+    return (
+        <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide whitespace-nowrap ${classes}`}>
+            {label}
+        </span>
+    );
+}
+
 function TrialTable({ data, currentPage, totalPages, onNextPage, onPrevPage }) {
     const convertStatus = (status) => {
         if (!status) return "Unknown";
         return status.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     };
 
-    const getStatusColor = (status) => {
-        switch (status?.toLowerCase()) {
-            case "recruiting":
-                return "bg-green-200 text-green-800";
-            case "available":
-                return "bg-green-200 text-green-800";
-            case "not_yet_recruiting":
-                return "bg-yellow-200 text-yellow-800";
-            case "withheld":
-                return "bg-red-200 text-red-800";
-            case "no_longer_available":
-                return "bg-red-200 text-red-800";
-            case "enrolling_by_invitation":
-                return "bg-blue-200 text-blue-800";
-            default:
-                return "bg-gray-200 text-gray-700";
-        }
-    };
 
     return (
         <>
@@ -47,9 +51,7 @@ function TrialTable({ data, currentPage, totalPages, onNextPage, onPrevPage }) {
                                         {trial.title}
                                     </td>
                                     <td className="p-3 text-sm text-gray-700">
-                                        <span className={`${getStatusColor(trial.status)} p-1.5 tracking-wider rounded-lg`}>
-                                            {convertStatus(trial.status)}
-                                        </span>
+                                        <StatusBadge status={trial.status} />
                                     </td>
                                     <td className="p-3 text-sm text-gray-700 truncate max-w-[250px]">
                                         {trial?.eligibility_criteria?.slice(0, 80) || "N/A"}...

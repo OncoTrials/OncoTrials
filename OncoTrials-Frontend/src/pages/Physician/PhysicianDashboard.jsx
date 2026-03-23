@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
 import AddPatientForm from './AddPatientForm'
 import TrialsTable from './TrialsTable'
+import SearchTrialsForm from '../patient/SearchTrialsForm'
+import TrialCards from '../patient/TrialCards'
 
 const getUserMetadata = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -32,7 +34,7 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    const { data: trials } = useQuery({
+    const { data: trials = [] } = useQuery({
         queryKey: ['getAllTrials'],
         queryFn: getAllTrials,
         staleTime: 5 * 60 * 1000,
@@ -54,10 +56,10 @@ function PhysicianDashboard() {
                 <PhysicianNavbar user_email={response?.email} />
                 <div className="flex gap-4 pr-3 pl-3 mt-5 min-h-[650px]">
                     <div className="sw-96 border shadow-2xl border-gray-300 rounded-2xl p-4">
-                        <AddPatientForm trials={trials} onFilter={setFilteredTrials}/>
+                        <SearchTrialsForm trials={trials} onFilter={setFilteredTrials}/>
                     </div>
                     <div className="flex-1 shadow-2xl border overflow-auto border-gray-300 rounded-lg">
-                        <TrialsTable trials={filteredTrials.length > 0 ? filteredTrials : []}/>
+                        <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []}/>
                     </div>
                 </div>
             </div>

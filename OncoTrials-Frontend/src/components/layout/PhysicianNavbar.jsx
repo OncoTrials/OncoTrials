@@ -6,9 +6,6 @@ import { Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle, Dropdown
 function PhysicianNavbar({user_email}) {
     const navigate = useNavigate();
 
-
-    
-
     return (
         <>
             <Navbar fluid>
@@ -17,19 +14,13 @@ function PhysicianNavbar({user_email}) {
                     <span className="self-center text-2xl font-semibold whitespace-nowrap text-white">OncoTrials</span>
                 </NavbarBrand>
                 <div className='flex items-center space-x-4 md:order-2'>
-                    {/* Desktop navigation - hidden on mobile */}
-                    {/* <div className="hidden md:flex md:space-x-6">
-                    <NavbarLink href="/patient-dashboard" className="text-white">Dashboard</NavbarLink>
-                    <NavbarLink href="/patient-settings" className="text-white">Settings</NavbarLink>
-                    <NavbarLink href="/" className="text-white">Log Out</NavbarLink>
-                </div> */}
-
                     <Dropdown arrowIcon={false} inline label={<Avatar placeholderInitials={user_email && user_email.slice(0,1).toUpperCase()} rounded className='cursor-pointer'/>}>
                         <DropdownHeader>
                             <span className='block truncate text-sm font-medium'>{user_email}</span>
                         </DropdownHeader>
                         <DropdownDivider />
                         <DropdownItem onClick={() => navigate('/physician-dashboard')}>Home</DropdownItem>
+                        <DropdownItem onClick={() => navigate('/physician-input-trials')}>Input Trials</DropdownItem>
                         <DropdownItem onClick={() => navigate('/physician-settings')}>Settings</DropdownItem>
                         <DropdownItem onClick={() => navigate('/')}>Log Out</DropdownItem>
                     </Dropdown>
@@ -39,6 +30,7 @@ function PhysicianNavbar({user_email}) {
                 {/* Mobile navigation - only shown when toggle is clicked */}
                 <NavbarCollapse>
                     <NavbarLink href="/physician-dashboard" className="text-white">Dashboard</NavbarLink>
+                    <NavbarLink href="/physician-input-trials" className="text-white">Input Trials</NavbarLink>
                     <NavbarLink href="/physician-settings" className="text-white">Settings</NavbarLink>
                     <NavbarLink href="/" className="text-white">Log Out</NavbarLink>
                 </NavbarCollapse>

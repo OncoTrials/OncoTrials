@@ -20,6 +20,17 @@ const getAllTrials = async () => {
     return data;
 }
 
+const getAllRecruitingTrials = async () => {
+    const { data, error } = await supabase
+    .from('trials')
+    .select('*')
+    .eq('status', 'RECRUITING');
+    
+
+    if (error) throw error;
+    return data;
+}
+
 function CRCDashboard() {
 
 
@@ -41,6 +52,16 @@ function CRCDashboard() {
         refetchOnWindowFocus: false,
     });
 
+    const { data: recruitingTrials } = useQuery({
+        queryKey: ['getAllRecruitingTrials'],
+        queryFn: getAllRecruitingTrials,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
+    console.log(recruitingTrials.length);
+
 
 
 
@@ -52,12 +73,12 @@ function CRCDashboard() {
             <div className='flex items-center justify-center h-52'>
                 <div className='flex flex-row gap-10'>
                     <div className='flex flex-col gap-1.5 items-center justify-center w-72 h-36 shadow-lg'>
-                        <h3 className='font-bold text-2xl'>{trials?.length}</h3>
+                        <h3 className='font-bold text-2xl'>{trials?.length}+</h3>
                         <p>Total Trials Available</p>
                     </div>
                     <div className='flex flex-col gap-1.5 items-center justify-center w-72 h-36 shadow-lg'>
-                        <h3 className='font-bold text-2xl'>TBD</h3>
-                        <p>Patients Recruiting</p>
+                        <h3 className='font-bold text-2xl'>{recruitingTrials.length}+</h3>
+                        <p>Trials Recruiting</p>
                     </div>
                     <div className='flex flex-col gap-1.5 items-center justify-center w-72 h-36 shadow-lg'>
                         <h3 className='font-bold text-2xl'>TBD</h3>

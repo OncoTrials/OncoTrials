@@ -45,7 +45,7 @@ const PatientLoginForm = () => {
         onSuccess: (data) => {
             if (data.user) {
                 console.log(data.user);
-                navigate('/patient-dashboard', { replace: true });
+                navigate('/auth/callback', { replace: true });
             }
         },
         onError: (error) => {

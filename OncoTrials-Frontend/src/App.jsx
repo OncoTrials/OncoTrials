@@ -1,4 +1,4 @@
-import {BrowserRouter as Router, Routes, Route} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { RequireAuth } from './utils/Auth';
 import HomePage from './pages/HomePage';
 import PatientLoginPage from './pages/Patient/PatientLoginPage';
@@ -19,6 +19,8 @@ import CRCSettings from './pages/crc/CRCSettings'
 import CRCMatchingHub from './pages/crc/CRCMatchingHub';
 import CRCPatients from './pages/crc/CRCPatients'
 import './App.css'
+import PatientOnboarding from './pages/patient/PatientOnboarding';
+import InputTrials from './pages/InputTrials';
 
 export const queryClient = new QueryClient();
 
@@ -26,36 +28,38 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-    <Router>
-      <Routes>
-        <Route path='/' element={<HomePage/>} />
-        <Route path='/patient-login' element={<PatientLoginPage/>} />
-        <Route path='/patient-register' element={<PatientRegister/>} />
-        <Route path='/physician-crc-register' element={<PhysicianCRCRegisterPage/>} />
-        <Route path='/physician-crc-login' element={<PhysicianCRCLoginPage/>} />
-        <Route path='/forgot-password' element={<ForgotPassword/>} />
-        <Route path='/change-password' element={<ChangePassword/>} />
-        <Route path='/auth/callback' element={<AuthCallback/>} />
-        {/* Patient only routes */}
-        <Route element={ <RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
-          <Route path='/patient-dashboard' element={<PatientDashboard/>} />
-          <Route path='/patient-settings' element={<PatientSettings/>} />
-        </Route>
-        {/* Physician only routes */}
-        <Route element={ <RequireAuth redirectTo='/physician-crc-login' allowedRoles={['practitioner']} />} >
-          <Route path='/physician-dashboard' element={<PhysicianDashboard/>} />
-          <Route path='/physician-settings' element={<PhysicianSettings/>} />
-        </Route>
-        {/* CRC only routes */}
-        <Route element={ <RequireAuth redirectTo='/physician-crc-login' allowedRoles={['crc']} />} >
-          <Route path='/crc-dashboard' element={<CRCDashboard/>} />
-          <Route path='/crc-hub' element={<CRCMatchingHub/>} />
-          <Route path='/crc-patients' element={<CRCPatients/>} />
-          <Route path='/crc-settings' element={<CRCSettings/>} />
-          <Route path='/crc-trials' element={<CRCTrials/>} />
-        </Route>
-      </Routes>
-    </Router>
+      <Router>
+        <Routes>
+          <Route path='/' element={<HomePage />} />
+          {/* <Route path='/patient-login' element={<PatientLoginPage />} />
+          <Route path='/patient-register' element={<PatientRegister />} /> */}
+          <Route path='/physician-register' element={<PhysicianCRCRegisterPage />} />
+          <Route path='/physician-login' element={<PhysicianCRCLoginPage />} />
+          <Route path='/forgot-password' element={<ForgotPassword />} />
+          <Route path='/change-password' element={<ChangePassword />} />
+          <Route path='/auth/callback' element={<AuthCallback />} />
+          {/* Patient only routes */}
+          {/* <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
+            <Route path='/patient-dashboard' element={<PatientDashboard />} />
+            <Route path='/patient-settings' element={<PatientSettings />} />
+            <Route path='/patient-intake' element={<PatientOnboarding />} />
+          </Route> */}
+          {/* Physician only routes */}
+          <Route element={<RequireAuth redirectTo='/physician-crc-login' allowedRoles={['practitioner']} />} >
+            <Route path='/physician-input-trials' element={<InputTrials />} />
+            <Route path='/physician-dashboard' element={<PhysicianDashboard />} />
+            <Route path='/physician-settings' element={<PhysicianSettings />} />
+          </Route>
+          {/* CRC only routes */}
+          <Route element={<RequireAuth redirectTo='/physician-crc-login' allowedRoles={['crc']} />} >
+            <Route path='/crc-dashboard' element={<CRCDashboard />} />
+            <Route path='/crc-hub' element={<CRCMatchingHub />} />
+            <Route path='/crc-patients' element={<CRCPatients />} />
+            <Route path='/crc-settings' element={<CRCSettings />} />
+            <Route path='/crc-trials' element={<CRCTrials />} />
+          </Route>
+        </Routes>
+      </Router>
     </QueryClientProvider>
   )
 }

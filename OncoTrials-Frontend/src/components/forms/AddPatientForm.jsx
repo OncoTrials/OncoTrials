@@ -5,10 +5,25 @@ import supabase from '../../utils/SupabaseClient';
 // 1. Fixed the insert logic. 
 // Supabase expects an array of objects or a single object matching column names.
 // pass 'patientData' directly, don't wrap it in another object unless you have a JSONB column named 'patientData'.
-const insertPatient = async (patientData) => {
+const insertPatient = async ({ patientData, userId }) => {
+    console.log(patientData);
     const { data, error } = await supabase
         .from('patients')
-        .insert([patientData]) // Insert as an array
+        .insert([
+            {
+                referred_by: userId,
+                full_name: patientData.full_name,
+                dob: patientData.dob,
+                gender: patientData.gender,
+                phone_number: patientData.phone_number,
+                location: patientData.location,
+                diagnosis: patientData.diagnosis,
+                ecog_score: patientData.ecog_score,
+                biomarkers: patientData.biomarkers,
+                prior_treatment: patientData.prior_treatment === 'yes' ? true : false
+            }
+        ]
+        )
         .select();
 
     if (error) {
@@ -31,6 +46,8 @@ function AddPatientForm({ isOpen, onClose }) {
         diagnosis: '',
         ecog_score: '',
         biomarkers: '',
+        prior_treatment: '',
+        line_of_treatment: '',
         // Add other columns from your Supabase 'patients' table here
     };
 
@@ -74,9 +91,11 @@ function AddPatientForm({ isOpen, onClose }) {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        insertPatientMutation.mutate(formData);
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log(formData);
+        insertPatientMutation.mutate({ patientData: formData, userId: user.id });
     };
 
     // 4. Return null if modal is closed
@@ -189,6 +208,37 @@ function AddPatientForm({ isOpen, onClose }) {
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Prior Treatment</label>
+                        <select
+                            name="prior_treatment"
+                            value={formData.prior_treatment}
+                            onChange={handleChange}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value={''}>Select</option>
+                            <option value={'yes'}>Yes</option>
+                            <option value={'no'}>No</option>
+                            </select>
+                    </div>
+
+                    {formData.prior_treatment === 'yes' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Which Line of Treatment?</label>
+                            <select
+                            name="line_of_treatment"
+                            value={formData.line_of_treatment}
+                            onChange={handleChange}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value={''}>Select</option>
+                            <option value={'1st'}>1st Line</option>
+                            <option value={'2nd'}>2nd Line</option>
+                            <option value={'3rd+'}>3rd Line+</option>
+                            </select>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
