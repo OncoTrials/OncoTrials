@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/genai": "^1.48.0",
     "@supabase/supabase-js": "^2.50.0",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
@@ -23,7 +24,9 @@
     "multer": "^2.0.2",
     "openai": "^6.7.0",
     "pdf-parse": "^2.4.5",
-    "pg": "^8.16.2"
+    "pg": "^8.16.2",
+    "zod": "^4.3.6",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
