@@ -31,6 +31,7 @@ async function extractPdfText(pdfBuffer) {
   }
 }
 
+
 /**
  * Build system prompt for protocol parsing
  */
@@ -421,5 +422,5 @@ module.exports = {
   extractPdfText,
   extractEligibilityCriteria,
   matchesBiomarkerRequirements,
-  meetsLineOfTherapyRequirement
+  meetsLineOfTherapyRequirement,
 };

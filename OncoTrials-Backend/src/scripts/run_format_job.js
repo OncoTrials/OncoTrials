@@ -98,7 +98,6 @@ async function summarizeEligibility(ai, trial) {
       temperature: 0.1
     }
   });
-  console.log('RAW RESPONSE TEXT:\n', response.text);
   const parsed = clinicianSummarySchema.parse(JSON.parse(response.text));
   return {
     parsed,
@@ -107,15 +106,16 @@ async function summarizeEligibility(ai, trial) {
 }
 
 async function pullTrialsBatch(limit = 50, offset = 0) {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('id, nct_id, title, eligibility_criteria')
-    .not('eligibility_criteria', 'is', null)
-    .range(offset, offset + limit - 1);
-
-  if (error) throw error;
-  return data || [];
-}
+    const { data, error } = await supabase
+      .from('trials')
+      .select('id, nct_id, title, eligibility_criteria, eligibility_criteria_summary')
+      .not('eligibility_criteria', 'is', null)
+      .is('eligibility_criteria_summary', null)
+      .range(offset, offset + limit - 1);
+  
+    if (error) throw error;
+    return data || [];
+  }
 
 async function saveSummary(trialId, summary) {
   const { error } = await supabase
@@ -131,99 +131,126 @@ async function saveSummary(trialId, summary) {
 }
 
 function shouldSkipTrial(trial) {
-  return !trial.eligibility_criteria || !trial.eligibility_criteria.trim();
+  return !trial.eligibility_criteria || !trial.eligibility_criteria.trim() || trial.eligibility_criteria_summary;
 }
 
-async function processTrials({
-  batchSize = 25,
-  maxTrials = null,
-  previewOnly = false,
-  onlyTrialId = null
-} = {}) {
-  const ai = await getGeminiClient();
-
-  let offset = 0;
-  let processed = 0;
-  let attempted = 0;
-
-  while (true) {
-    let trials = await pullTrialsBatch(batchSize, offset);
-
-    //cconsole.log(trials);
-    if (onlyTrialId) {
-      trials = trials.filter(t => String(t.id) === String(onlyTrialId));
-    }
-
-
-    if (!trials.length) break;
-
-    for (const trial of trials) {
-      if (maxTrials && attempted >= maxTrials) {
-        console.log(`Reached maxTrials=${maxTrials}`);
-        return;
-      }
-
-      attempted++;
-
-      if (shouldSkipTrial(trial)) {
-        console.log(`Skipping ${trial.id} - no eligibility text`);
-        continue;
-      }
-
-      try {
-        console.log(`Summarizing ${trial.id} ${trial.nct_id ? `(${trial.nct_id})` : ''}...`);
-
-        const result = await summarizeEligibility(ai, trial);
-
-        if (previewOnly) {
-          console.log('\n================ PREVIEW ================\n');
-          console.log(`Trial ID: ${trial.id}`);
-          console.log(`Title: ${trial.title || 'Untitled'}`);
-          console.log('\n--- MARKDOWN SUMMARY ---\n');
-          console.log(result.parsed.summary_markdown);
-          console.log('\n--- JSON ---\n');
-          console.log(JSON.stringify(result.parsed, null, 2));
-          console.log('\n=========================================\n');
-        } else {
-          await saveSummary(trial.id, result.parsed);
-          console.log(`✓ Saved clinician summary for ${trial.id}`);
-        }
-
-        processed++;
-      } catch (error) {
-        console.error(`✗ Failed for trial ${trial.id}:`, error.message);
+async function runWithConcurrency(items, concurrency, worker) {
+    let currentIndex = 0;
+  
+    async function runner() {
+      while (true) {
+        const index = currentIndex++;
+        if (index >= items.length) break;
+        await worker(items[index], index);
       }
     }
-
-    offset += batchSize;
-
-    if (onlyTrialId) break;
+  
+    const runners = Array.from(
+      { length: Math.min(concurrency, items.length) },
+      () => runner()
+    );
+  
+    await Promise.all(runners);
   }
-
-  console.log(`Done. Attempted: ${attempted}. Processed: ${processed}.`);
-}
+  
+  const failedTrials = [];
+  
+  async function processTrials({
+    batchSize = 25,
+    maxTrials = null,
+    previewOnly = false,
+    onlyTrialId = null,
+    concurrency = 5
+  } = {}) {
+    const ai = await getGeminiClient();
+  
+    let offset = 0;
+    let processed = 0;
+    let attempted = 0;
+  
+    while (true) {
+      let trials = await pullTrialsBatch(batchSize, offset);
+  
+      if (onlyTrialId) {
+        trials = trials.filter(t => String(t.id) === String(onlyTrialId));
+      }
+  
+      if (!trials.length) break;
+  
+      if (maxTrials) {
+        const remaining = maxTrials - attempted;
+        if (remaining <= 0) {
+          console.log(`Reached maxTrials=${maxTrials}`);
+          return;
+        }
+        trials = trials.slice(0, remaining);
+      }
+  
+      await runWithConcurrency(trials, concurrency, async (trial) => {
+        attempted++;
+  
+        if (shouldSkipTrial(trial)) {
+          console.log(`Skipping ${trial.id} - missing eligibility text or already summarized`);
+          return;
+        }
+  
+        try {
+          console.log(`Summarizing ${trial.id} ${trial.nct_id ? `(${trial.nct_id})` : ''}...`);
+  
+          const result = await summarizeEligibility(ai, trial);
+  
+          if (previewOnly) {
+            console.log('\n================ PREVIEW ================\n');
+            console.log(`Trial ID: ${trial.id}`);
+            console.log(`Title: ${trial.title || 'Untitled'}`);
+            console.log('\n--- MARKDOWN SUMMARY ---\n');
+            console.log(result.parsed.summary_markdown);
+            console.log('\n--- JSON ---\n');
+            console.log(JSON.stringify(result.parsed, null, 2));
+            console.log('\n=========================================\n');
+          } else {
+            await saveSummary(trial.id, result.parsed);
+            console.log(`✓ Saved clinician summary for ${trial.id}`);
+          }
+  
+          processed++;
+        } catch (error) {
+          console.error(`✗ Failed for trial ${trial.id}:`, error.message);
+          failedTrials.push([trial.id, trial.title]);
+        }
+      });
+  
+      offset += batchSize;
+  
+      if (onlyTrialId) break;
+    }
+  
+    console.log(`Done. Attempted: ${attempted}. Processed: ${processed}.`);
+    console.log('Failed trials:', failedTrials);
+  }
 
 // ---- RUN MODES ----
 (async () => {
   try {
-    // Preview a small sample:
+    //Preview a small sample:
     // await processTrials({
     //   batchSize: 10,
-    //   maxTrials: 1,
+    //   maxTrials: 5,
     //   previewOnly: true
     // });
 
-    await processTrials({
-      batchSize: 50,
-      onlyTrialId: '478db8a2-ec19-4028-8f89-1222d022dd9e',
-      previewOnly: true
-    });
-
-    // Proccess all trials
     // await processTrials({
-    //   batchSize: 25,
+    //   batchSize: 50,
+    //   onlyTrialId: '478db8a2-ec19-4028-8f89-1222d022dd9e',
     //   previewOnly: false
     // });
+
+    // Proccess all trials
+    await processTrials({
+      batchSize: 100,
+      concurrency: 5,
+      previewOnly: false
+    });
 
     // Process one specific trial:
     // await processTrials({
