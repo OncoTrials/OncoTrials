@@ -48,13 +48,13 @@ const TrustIndicators = () => {
 
 function HomePage() {
     const LoginDropdownItems = [
-        { path: '/patient-login', label: 'Patient Login' },
-        { path: '/physician-crc-login', label: 'Physician/CRC Login' }
+        // { path: '/patient-login', label: 'Patient Login' },
+        { path: '/physician-login', label: 'Physician Login' }
     ]
 
     const RegisterDropdownItems = [
-        { path: '/patient-register', label: 'Patient Register' },
-        { path: '/physician-crc-register', label: 'Physician/CRC Register' }
+        // { path: '/patient-register', label: 'Patient Register' },
+        { path: '/physician-register', label: 'Physician Register' }
     ]
     return (
         <>

@@ -10,6 +10,13 @@ function AddPatientForm({ trials, onFilter }) {
     const [biomarker, setBioMarker] = useState('');
     // console.log(gender, age, trialStatus, cancerType, biomarker);
 
+    const convertToYear = (date) => {
+        if(date[1] && date[1] === 'Months' || date[1] === 'Years' || date[1] === 'Weeks' || date[1] === 'Hours'){
+            return date[0] / 365
+        }
+        // console.log(date[1]);
+    }
+
 
     const handleSearch = () => {
         const results = trials.filter(trial => {
@@ -17,13 +24,21 @@ function AddPatientForm({ trials, onFilter }) {
             const genderMatch =
                 !gender ||
                 gender === 'all' ||
+                trial.sex?.toLowerCase() === 'all' ||
                 trial.sex?.toLowerCase() === gender.toLowerCase()
 
             // --- Age ---
             let ageMatch = true
+            let te = null
             if (age) {
+                if (trial.minimum_age) {
+                    // console.log(trial.minimum_age.split(" "));
+                    te = convertToYear(trial.minimum_age.split(" "));
+                    console.log(test);
+                }
+                
                 const trialMinAge = parseInt(trial.minimum_age) || 0 // e.g., "18 Years"
-                ageMatch = Number(age) >= trialMinAge
+                ageMatch = Number(age) >= te
             }
 
             // --- Status ---
@@ -32,19 +47,22 @@ function AddPatientForm({ trials, onFilter }) {
                 trial.status?.toLowerCase() === trialStatus.toLowerCase()
 
             // --- Cancer Type ---
+            const searchCondition = cancerType?.toLowerCase();
             const cancerTypeMatch =
-                !cancerType ||
+                !searchCondition ||
+                (Array.isArray(trial.conditions)) &&
                 trial.conditions?.some(cond =>
-                    cond.toLowerCase().includes(cancerType.toLowerCase())
+                    cond.toLowerCase().includes(searchCondition)
                 )
 
             // --- Biomarker ---
+            const searchBiomarker = biomarker?.toLowerCase();
             const biomarkerMatch =
-                !biomarker || !trial.biomarker_criteria ||
+                !searchBiomarker || !trial.biomarker_criteria ||
                 (trial.biomarker_criteria &&
                     trial.biomarker_criteria
                         .toLowerCase()
-                        .includes(biomarker.toLowerCase()))
+                        .includes(searchBiomarker))
             
             // if (genderMatch === false){
             //     console.log({
