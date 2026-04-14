@@ -58,7 +58,7 @@ const fieldConfig = {
             { value: 'no', label: 'No' },
         ]
     },
-    prior_treatment: {
+    line_of_treatment: {
         label: 'Line Of Treatment',
         type: 'select',
         placeholder: '1st line, 2nd line, or 3rd line',
