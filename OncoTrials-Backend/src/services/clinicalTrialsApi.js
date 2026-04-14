@@ -25,10 +25,14 @@ function buildLocationFilter(countries) {
     return `SEARCH[Location](${parts.join(" OR ")})`;
 }
 
-async function fetchStudiesPage({ query = "", pageToken = null } = {}) {
+async function fetchStudiesPage({ query = "", pageToken = null, lastUpdatePostDate = null } = {}) {
     const params = {};
     if (query) params["query.term"] = query;
     if (pageToken) params.pageToken = pageToken;
+    if (lastUpdatePostDate) {
+        // filter.lastUpdatePostDate uses YYYY-MM-DD
+        params["filter.lastUpdatePostDate"] = lastUpdatePostDate;
+    }
 
     // Server-side country filter built from config
     const countries = getAllowedCountriesForApi();
