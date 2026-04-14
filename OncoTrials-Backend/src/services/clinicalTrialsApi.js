@@ -27,12 +27,19 @@ function buildLocationFilter(countries) {
 
 async function fetchStudiesPage({ query = "", pageToken = null, lastUpdatePostDate = null } = {}) {
     const params = {};
-    if (query) params["query.term"] = query;
     if (pageToken) params.pageToken = pageToken;
+
+    // Build the query term
+    let term = query || "";
     if (lastUpdatePostDate) {
-        // filter.lastUpdatePostDate uses YYYY-MM-DD
-        params["filter.lastUpdatePostDate"] = lastUpdatePostDate;
+        // Use Essie syntax for date range: AREA[LastUpdatePostDate]RANGE[YYYY-MM-DD, MAX]
+        const dateFilter = `AREA[LastUpdatePostDate]RANGE[${lastUpdatePostDate}, MAX]`;
+        term = term ? `(${term}) AND ${dateFilter}` : dateFilter;
     }
+    if (term) params["query.term"] = term;
+
+    // Always sort by last update to get newest first (helps with incremental sync)
+    params.sort = "LastUpdatePostDate:desc";
 
     // Server-side country filter built from config
     const countries = getAllowedCountriesForApi();
