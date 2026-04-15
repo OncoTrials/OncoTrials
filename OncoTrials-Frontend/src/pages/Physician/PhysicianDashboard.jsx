@@ -42,7 +42,7 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    console.log(trials);
+    //console.log(trials);
 
     // console.log(trials);
 

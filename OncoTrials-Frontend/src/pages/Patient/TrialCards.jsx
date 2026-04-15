@@ -40,6 +40,26 @@ function TrialCards({ trials }) {
         }
     };
 
+    const getEligibilityColor = (eligibility) => {
+        if (!eligibility) return 'bg-red-100 text-red-700';
+        switch (eligibility.toLowerCase()) {
+            case 'eligible': return 'bg-green-100 text-green-700';
+            case 'likely_eligible': return 'bg-yellow-100 text-yellow-700';
+            case 'needs_review': return 'bg-gray-100 text-gray-600';
+            default: return 'bg-red-100 text-red-700';
+        }
+    };
+
+    const convertEligibility = (eligibility) => {
+        if (!eligibility) return '';
+        switch (eligibility.toLowerCase()) {
+            case 'eligible': return 'Eligible';
+            case 'likely_eligible': return 'Likely Eligible';
+            case 'needs_review': return 'Needs Review';
+            case 'not_eligible': return 'Not Eligible'
+        }
+    };
+
     const getStatusDot = (status) => {
         if (!status) return 'bg-red-400';
         switch (status.toLowerCase()) {
@@ -93,9 +113,9 @@ function TrialCards({ trials }) {
                     >
                         {/* Top accent bar — colour reflects match % */}
                         <div
-                            className={`h-1.5 w-full ${trial.match_percentage >= 90
+                            className={`h-1.5 w-full ${trial.match?.score >= 90
                                 ? 'bg-green-400'
-                                : trial.match_percentage >= 50
+                                : trial.match?.score >= 50
                                     ? 'bg-yellow-400'
                                     : 'bg-red-400'
                                 }`}
@@ -109,15 +129,24 @@ function TrialCards({ trials }) {
                                 </h3>
 
                                 {/* Match badge */}
-                                <span
+                                {trial.match?.score && (<span
                                     className={`
                                         shrink-0 inline-flex items-center px-2.5 py-0.5
                                         rounded-full text-xs font-bold tracking-wide
-                                        ${getMatchBadgeColor(trial.match_percentage)}
+                                        ${getMatchBadgeColor(trial.match?.score)}
                                     `}
                                 >
-                                    {trial.match_percentage}%
-                                </span>
+                                    {trial.match?.score}%
+                                </span>)}
+                                {trial.match?.score && (<span
+                                    className={`
+                                        shrink-0 inline-flex items-center px-2.5 py-0.5
+                                        rounded-full text-xs font-bold tracking-wide
+                                        ${getEligibilityColor(trial.match?.status)}
+                                    `}
+                                >
+                                    {convertEligibility(trial.match?.status)}
+                                </span>)}
                             </div>
 
                             {/* Eligibility criteria snippet */}
@@ -165,8 +194,8 @@ function TrialCards({ trials }) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Accent bar */}
-                        <div className={`h-2 w-full shrink-0 ${modalData.match_percentage >= 90 ? 'bg-green-400'
-                            : modalData.match_percentage >= 50 ? 'bg-yellow-400'
+                        <div className={`h-2 w-full shrink-0 ${modalData.match?.score >= 90 ? 'bg-green-400'
+                            : modalData.match?.score >= 50 ? 'bg-yellow-400'
                                 : 'bg-red-400'
                             }`} />
 
@@ -178,8 +207,8 @@ function TrialCards({ trials }) {
                                 <h2 className="text-lg font-semibold text-gray-900 leading-snug flex-1">
                                     {modalData.title}
                                 </h2>
-                                <span className={`shrink-0 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold tracking-wide ${getMatchBadgeColor(modalData.match_percentage)}`}>
-                                    {modalData.match_percentage}% Match
+                                <span className={`shrink-0 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold tracking-wide ${getMatchBadgeColor(modalData.match?.score)}`}>
+                                    {modalData.match?.score ?? 'n/a'}% Match
                                 </span>
                             </div>
 
@@ -247,6 +276,22 @@ function TrialCards({ trials }) {
                                             </span>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+
+                            {modalData.study_description && (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm font-medium text-gray-500">Reasons for Trial Score</span>
+                                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
+                                        <h4>Met Inclusion</h4>
+                                        {modalData.match?.reasons.met_inclusion}
+                                        <h4>Failed Inclusion</h4>
+                                        {modalData.match?.reasons.failed_inclusion}
+                                        <h4>Met Inclusion</h4>
+                                        {/* {modalData.match?.reasons.met_inclusion} */}
+                                        <h4>Notes</h4>
+                                        {modalData.match?.reasons.notes}
+                                    </p>
                                 </div>
                             )}
 
