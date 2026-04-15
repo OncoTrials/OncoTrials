@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import FormButton from '../../components/buttons/FormButton'
 import { InfoIcon, WarningIcon } from '@phosphor-icons/react'
+import EligibilityMatcher from '../../utils/EligibilityMatcher'
 
 // Normalize strings for comparison: lowercase, strip hyphens/underscores/spaces
 const normalize = (str) =>
@@ -13,8 +14,10 @@ function SearchTrialsForm({ trials, onFilter }) {
     const [diagnosis, setDiagnosis] = useState('')
     const [cancerStage, setCancerStage] = useState('')
     const [cancerType, setCancerType] = useState('')
-    const [mutationBiomarker, setMutationBiomarker] = useState('')
-    const [errors, setErrors] = useState({})
+    const [mutationBiomarker, setMutationBiomarker] = useState('');
+    const [ecogScore, setEcogScore] = useState('');
+    const [lineOfTreatment, setLineOfTreatment] = useState('');
+    const [errors, setErrors] = useState({});
     const [resultCount, setResultCount] = useState(null)
 
     // ── Validation ────────────────────────────────────────────────────────────
@@ -30,24 +33,38 @@ function SearchTrialsForm({ trials, onFilter }) {
         return Object.keys(next).length === 0
     }
 
+    const buildPatientObject = () => {
+        return {
+            gender,
+            age: age ? Number(age) : null,
+            cancerType,
+            mutationBiomarker,
+            ecog: ecogScore,
+            priorLinesOfTherapy: lineOfTreatment,
+            pregnant: null,
+            hasILD: null,
+            hasMeasurableDisease: null,
+            daysSinceLastTherapy: null,
+        };
+    };
+
     // ── Filter logic ──────────────────────────────────────────────────────────
     const handleSearch = () => {
         if (!validate()) return
 
+        const patient = buildPatientObject()
         const numAge = age ? Number(age) : null
 
-        const results = trials.filter(trial => {
-
-            // Gender — normalise both sides so "All" / "all" / "ALL" all match
+        const filtered = trials.filter(trial => {
             const trialGender = normalize(trial.sex)
             const selectedGender = normalize(gender)
+
             const genderMatch =
                 !selectedGender ||
-                trialGender === 'all' ||          // trial open to everyone
-                selectedGender === 'all' ||        // user chose "Prefer not to say"
+                trialGender === 'all' ||
+                selectedGender === 'all' ||
                 trialGender === selectedGender
 
-            // Age — check both minimum and maximum age when present
             let ageMatch = true
             if (numAge !== null) {
                 const rawMin = parseInt(trial.minimum_age, 10)
@@ -57,28 +74,24 @@ function SearchTrialsForm({ trials, onFilter }) {
                 ageMatch = numAge >= minAge && numAge <= maxAge
             }
 
-            // Status — normalize both sides (handles hyphens, spaces, casing)
             const statusMatch =
                 !trialStatus ||
                 normalize(trial.status) === normalize(trialStatus)
 
-            // Diagnosis — searches conditions array
             const conditions = trial.conditions ?? []
+
             const diagnosisMatch =
                 !diagnosis.trim() ||
                 conditions.some(c =>
                     c.toLowerCase().includes(diagnosis.trim().toLowerCase())
                 )
 
-            // Cancer type — searches conditions array (distinct intent from diagnosis)
             const cancerTypeMatch =
                 !cancerType.trim() ||
                 conditions.some(c =>
                     c.toLowerCase().includes(cancerType.trim().toLowerCase())
                 )
 
-            // Cancer stage — now actually applied
-            // Looks in conditions, keywords, or a dedicated stage field if present
             const stageMatch =
                 !cancerStage ||
                 (trial.stage && normalize(trial.stage) === normalize(cancerStage)) ||
@@ -89,7 +102,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                     normalize(k).includes(normalize(cancerStage))
                 )
 
-            // Biomarker — treat missing biomarker_criteria as "no restriction"
             const biomarkerMatch =
                 !mutationBiomarker.trim() ||
                 !trial.biomarker_criteria ||
@@ -108,8 +120,13 @@ function SearchTrialsForm({ trials, onFilter }) {
             )
         })
 
-        setResultCount(results.length)
-        onFilter(results || [])
+        const resultsWithMatch = filtered.map(trial => ({
+            ...trial,
+            match: EligibilityMatcher.evaluatePatientAgainstTrial(patient, trial),
+        }))
+
+        setResultCount(resultsWithMatch.length)
+        onFilter(resultsWithMatch)
     }
 
     // ── Reset — restore full list, clear all state ────────────────────────────
@@ -123,8 +140,8 @@ function SearchTrialsForm({ trials, onFilter }) {
         setMutationBiomarker('')
         setErrors({})
         setResultCount(null)
-        onFilter(trials) // ← return ALL trials, not an empty array
-    }
+        onFilter(trials);
+          };
 
     // ── Shared input class ────────────────────────────────────────────────────
     const inputCls =
@@ -227,6 +244,20 @@ function SearchTrialsForm({ trials, onFilter }) {
                     <option value="stage iv">Stage IV</option>
                 </select>
             </div>
+            <div className={fieldCls}>
+                <label className={labelCls} htmlFor="cancer-stage-input">Line of Treatment</label>
+                <select
+                    className={`${inputCls} border-gray-300`}
+                    value={lineOfTreatment}
+                    onChange={(e) => setCancerStage(e.target.value)}
+                    id="line-of-treatment-input"
+                >
+                    <option value="">Select</option>
+                    <option value="first line">First Line</option>
+                    <option value="second line">Second Line</option>
+                    <option value="third line">Third Line</option>
+                </select>
+            </div>
 
             {/* Cancer Type */}
             <div className={fieldCls}>
@@ -263,7 +294,7 @@ function SearchTrialsForm({ trials, onFilter }) {
 
             {/* Actions */}
             <div className="flex flex-row font-sm md:font-md items-center justify-center space-x-5">
-                <FormButton text="Search Trials"  type='submit' onClick={handleSearch} />
+                <FormButton text="Search Trials" type='submit' onClick={handleSearch} />
                 <FormButton text="Reset" type='button' onClick={handleReset} />
             </div>
         </>
