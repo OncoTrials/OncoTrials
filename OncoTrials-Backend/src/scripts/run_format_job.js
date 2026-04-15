@@ -170,10 +170,12 @@ async function runWithConcurrency(items, concurrency, worker) {
   
     while (true) {
       let trials = await pullTrialsBatch(batchSize, offset);
+      //console.log(trials);
   
       if (onlyTrialId) {
         trials = trials.filter(t => String(t.id) === String(onlyTrialId));
       }
+
   
       if (!trials.length) break;
   
@@ -241,14 +243,16 @@ async function runWithConcurrency(items, concurrency, worker) {
 
     // await processTrials({
     //   batchSize: 50,
-    //   onlyTrialId: '478db8a2-ec19-4028-8f89-1222d022dd9e',
+    //   maxTrials: 10,
+    //   concurrency: 3,
+    //   onlyTrialId: '5d241ef6-2fed-4f48-824c-b43a964cf31b',
     //   previewOnly: false
     // });
 
     // Proccess all trials
     await processTrials({
       batchSize: 100,
-      concurrency: 5,
+      concurrency: 3,
       previewOnly: false
     });
 
