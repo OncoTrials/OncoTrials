@@ -5,7 +5,7 @@ function TrialCards({ trials }) {
     const [modalData, setModalData] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const trialsPerPage = 9;
+    const trialsPerPage = 12;
     const totalPages = Math.ceil(trials.length / trialsPerPage);
     const startIndex = (currentPage - 1) * trialsPerPage;
     const paginatedData = trials.slice(startIndex, startIndex + trialsPerPage);
@@ -88,6 +88,22 @@ function TrialCards({ trials }) {
             .trim();
     };
 
+    const renderList = (items) => {
+        if (!items || items.length === 0) {
+            return <p className="text-sm text-black">None</p>;
+        }
+
+        return (
+            <ul className="list-disc pl-5 text-sm text-black">
+                {items.map((item, index) => (
+                    <li key={index} className="mb-1">
+                        {item}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+
     if (!trials || trials.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-[750px]">
@@ -113,11 +129,11 @@ function TrialCards({ trials }) {
                     >
                         {/* Top accent bar — colour reflects match % */}
                         <div
-                            className={`h-1.5 w-full ${trial.match?.score >= 90
+                            className={`h-1.5 w-full ${trial.match?.status === 'eligible'
                                 ? 'bg-green-400'
-                                : trial.match?.score >= 50
-                                    ? 'bg-yellow-400'
-                                    : 'bg-red-400'
+                                : trial.match?.score === 'likely_eligible'
+                                    ? 'bg-yellow-400' : trial.match?.status === 'not_eligible' ? 'bg-red-400'
+                                        : 'bg-gray-400'
                                 }`}
                         />
 
@@ -129,7 +145,7 @@ function TrialCards({ trials }) {
                                 </h3>
 
                                 {/* Match badge */}
-                                {trial.match?.score && (<span
+                                {/* {trial.match?.score && (<span
                                     className={`
                                         shrink-0 inline-flex items-center px-2.5 py-0.5
                                         rounded-full text-xs font-bold tracking-wide
@@ -137,7 +153,7 @@ function TrialCards({ trials }) {
                                     `}
                                 >
                                     {trial.match?.score}%
-                                </span>)}
+                                </span>)} */}
                                 {trial.match?.score && (<span
                                     className={`
                                         shrink-0 inline-flex items-center px-2.5 py-0.5
@@ -194,9 +210,9 @@ function TrialCards({ trials }) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Accent bar */}
-                        <div className={`h-2 w-full shrink-0 ${modalData.match?.score >= 90 ? 'bg-green-400'
-                            : modalData.match?.score >= 50 ? 'bg-yellow-400'
-                                : 'bg-red-400'
+                        <div className={`h-2 w-full shrink-0 ${modalData.match?.status === 'eligible' ? 'bg-green-400'
+                            : modalData.match?.status === 'likely_eligible' ? 'bg-yellow-400'
+                                : 'bg-gray-400'
                             }`} />
 
                         {/* Scrollable body */}
@@ -207,9 +223,9 @@ function TrialCards({ trials }) {
                                 <h2 className="text-lg font-semibold text-gray-900 leading-snug flex-1">
                                     {modalData.title}
                                 </h2>
-                                <span className={`shrink-0 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold tracking-wide ${getMatchBadgeColor(modalData.match?.score)}`}>
-                                    {modalData.match?.score ?? 'n/a'}% Match
-                                </span>
+                                {modalData.match?.status && (<span className={`shrink-0 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold tracking-wide ${getEligibilityColor(modalData.match?.status)}`}>
+                                    {convertEligibility(modalData.match?.status)}
+                                </span>)}
                             </div>
 
                             {/* ── Overview grid ── */}
@@ -279,18 +295,24 @@ function TrialCards({ trials }) {
                                 </div>
                             )}
 
-                            {modalData.study_description && (
+                            {modalData.match?.reasons && (
                                 <div className="flex flex-col gap-1">
                                     <span className="text-sm font-medium text-gray-500">Reasons for Trial Score</span>
                                     <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
-                                        <h4>Met Inclusion</h4>
-                                        {modalData.match?.reasons.met_inclusion}
-                                        <h4>Failed Inclusion</h4>
-                                        {modalData.match?.reasons.failed_inclusion}
-                                        <h4>Met Inclusion</h4>
-                                        {/* {modalData.match?.reasons.met_inclusion} */}
-                                        <h4>Notes</h4>
-                                        {modalData.match?.reasons.notes}
+                                        <h4 className="text-lg font-semibold mt-4">Met Inclusion</h4>
+                                        {renderList(modalData.match?.reasons.met_inclusion)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Failed Inclusion</h4>
+                                        {renderList(modalData.match?.reasons.failed_inclusion)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Triggered Inclusion</h4>
+                                        {renderList(modalData.match?.reasons.triggered_inclusion)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Missing Information</h4>
+                                        {renderList(modalData.match?.reasons.missing_information)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Notes</h4>
+                                        {renderList(modalData.match?.reasons.notes)}
                                     </p>
                                 </div>
                             )}

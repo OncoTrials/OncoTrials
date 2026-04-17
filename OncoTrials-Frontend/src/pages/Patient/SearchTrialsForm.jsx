@@ -82,24 +82,24 @@ function SearchTrialsForm({ trials, onFilter }) {
 
             const diagnosisMatch =
                 !diagnosis.trim() ||
-                conditions.some(c =>
-                    c.toLowerCase().includes(diagnosis.trim().toLowerCase())
+                conditions.some(condition =>
+                    condition.toLowerCase().includes(diagnosis.trim().toLowerCase())
                 )
 
             const cancerTypeMatch =
                 !cancerType.trim() ||
-                conditions.some(c =>
-                    c.toLowerCase().includes(cancerType.trim().toLowerCase())
+                conditions.some(condition =>
+                    condition.toLowerCase().includes(cancerType.trim().toLowerCase())
                 )
 
             const stageMatch =
                 !cancerStage ||
                 (trial.stage && normalize(trial.stage) === normalize(cancerStage)) ||
-                conditions.some(c =>
-                    normalize(c).includes(normalize(cancerStage))
+                conditions.some(condition =>
+                    normalize(condition).includes(normalize(cancerStage))
                 ) ||
-                (trial.keywords ?? []).some(k =>
-                    normalize(k).includes(normalize(cancerStage))
+                (trial.keywords ?? []).some(keyword =>
+                    normalize(keyword).includes(normalize(cancerStage))
                 )
 
             const biomarkerMatch =
@@ -141,7 +141,7 @@ function SearchTrialsForm({ trials, onFilter }) {
         setErrors({})
         setResultCount(null)
         onFilter(trials);
-          };
+        };
 
     // ── Shared input class ────────────────────────────────────────────────────
     const inputCls =
@@ -273,6 +273,21 @@ function SearchTrialsForm({ trials, onFilter }) {
                     id="cancer-type-input"
                 />
                 {errors.cancerType && <p className={errorCls}>{errors.cancerType}</p>}
+            </div>
+
+            <div className={fieldCls}>
+                <label className={labelCls} htmlFor="age-input">ECOG Score</label>
+                <input
+                    className={`${inputCls} ${errors.ecogScore ? 'border-red-400' : 'border-gray-300'}`}
+                    placeholder="Enter ECOG Score"
+                    type="number"
+                    min={0}
+                    max={5}
+                    value={ecogScore}
+                    onChange={(e) => setEcogScore(e.target.value)}
+                    id="ecog-input"
+                />
+                {errors.ecogScore && <p className={errorCls}>{errors.ecogScore}</p>}
             </div>
 
             {/* Mutation / Biomarker */}
