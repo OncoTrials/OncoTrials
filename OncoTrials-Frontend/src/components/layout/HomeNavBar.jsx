@@ -6,7 +6,7 @@ import GetStartedDropdown from '../buttons/HomeDropdown';
 function HomeNavBar() {
     const DropdownItems = [
         // { path: '/patient-register', label: 'Patient Register' },
-        { path: '/physician-crc-register', label: 'Physician Register' }
+        { path: '/physician-register', label: 'Physician Register' }
     ]
 
     return (

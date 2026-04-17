@@ -110,7 +110,7 @@ function PhysicianCRCLoginForm() {
                             )}
 
                             <div className='flex justify-center'>
-                                <p className='text-sm'>Don't have an account? <Link to='/physician-crc-register' className='text-blue-400 hover:underline'>Sign Up</Link></p>
+                                <p className='text-sm'>Don't have an account? <Link to='/physician-register' className='text-blue-400 hover:underline'>Sign Up</Link></p>
                             </div>
                         </div>
                     </div>
