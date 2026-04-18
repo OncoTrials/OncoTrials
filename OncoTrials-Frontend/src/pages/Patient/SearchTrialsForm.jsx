@@ -294,17 +294,15 @@ function SearchTrialsForm({ trials, onFilter }) {
             <div className={fieldCls}>
                 <label className={labelCls} htmlFor="mutation-biomarker-input">
                     Mutation or Biomarker (e.g., EGFR, KRAS)
-                    <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                    className={`${inputCls} ${errors.mutationBiomarker ? 'border-red-400' : 'border-gray-300'}`}
+                    className={`${inputCls} border-gray-300`}
                     placeholder="Enter text here"
                     value={mutationBiomarker}
                     onChange={(e) => { setMutationBiomarker(e.target.value); setErrors(p => ({ ...p, mutationBiomarker: undefined })) }}
                     id="mutation-biomarker-input"
-                    rows={5}
+                    rows={3}
                 />
-                {errors.mutationBiomarker && <p className={errorCls}>{errors.mutationBiomarker}</p>}
             </div>
 
             {/* Actions */}

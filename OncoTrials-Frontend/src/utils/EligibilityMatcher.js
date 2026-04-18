@@ -318,7 +318,7 @@ class EligibilityMatcher {
   }
 
   static checkBiomarker(patient, trial, inclusionCriteria) {
-    const patientBiomarker = patient?.biomarker?.toLowerCase()?.trim();
+    const patientBiomarker = patient?.mutationBiomarker?.toLowerCase()?.trim();
 
     const trialBiomarkerText = [
       trial?.biomarker_criteria || "",
