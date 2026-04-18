@@ -5,7 +5,7 @@ function TrialCards({ trials }) {
     const [modalData, setModalData] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const trialsPerPage = 9;
+    const trialsPerPage = 12;
     const totalPages = Math.ceil(trials.length / trialsPerPage);
     const startIndex = (currentPage - 1) * trialsPerPage;
     const paginatedData = trials.slice(startIndex, startIndex + trialsPerPage);
@@ -40,6 +40,26 @@ function TrialCards({ trials }) {
         }
     };
 
+    const getEligibilityColor = (eligibility) => {
+        if (!eligibility) return 'bg-red-100 text-red-700';
+        switch (eligibility.toLowerCase()) {
+            case 'eligible': return 'bg-green-100 text-green-700';
+            case 'likely_eligible': return 'bg-yellow-100 text-yellow-700';
+            case 'needs_review': return 'bg-gray-100 text-gray-600';
+            default: return 'bg-red-100 text-red-700';
+        }
+    };
+
+    const convertEligibility = (eligibility) => {
+        if (!eligibility) return '';
+        switch (eligibility.toLowerCase()) {
+            case 'eligible': return 'Eligible';
+            case 'likely_eligible': return 'Likely Eligible';
+            case 'needs_review': return 'Needs Review';
+            case 'not_eligible': return 'Not Eligible'
+        }
+    };
+
     const getStatusDot = (status) => {
         if (!status) return 'bg-red-400';
         switch (status.toLowerCase()) {
@@ -59,6 +79,30 @@ function TrialCards({ trials }) {
 
     const openModal = (trial) => setModalData(trial);
     const closeModal = () => setModalData(null);
+
+    const cleanEligibilitySummary = (summary) => {
+        if (!summary) return '';
+
+        return summary
+            .replace(/##\s*/g, '')  // remove "##" and any trailing space
+            .trim();
+    };
+
+    const renderList = (items) => {
+        if (!items || items.length === 0) {
+            return <p className="text-sm text-black">None</p>;
+        }
+
+        return (
+            <ul className="list-disc pl-5 text-sm text-black">
+                {items.map((item, index) => (
+                    <li key={index} className="mb-1">
+                        {item}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
 
     if (!trials || trials.length === 0) {
         return (
@@ -85,11 +129,11 @@ function TrialCards({ trials }) {
                     >
                         {/* Top accent bar — colour reflects match % */}
                         <div
-                            className={`h-1.5 w-full ${trial.match_percentage >= 90
-                                    ? 'bg-green-400'
-                                    : trial.match_percentage >= 50
-                                        ? 'bg-yellow-400'
-                                        : 'bg-red-400'
+                            className={`h-1.5 w-full ${trial.match?.status === 'eligible'
+                                ? 'bg-green-400'
+                                : trial.match?.score === 'likely_eligible'
+                                    ? 'bg-yellow-400' : trial.match?.status === 'not_eligible' ? 'bg-red-400'
+                                        : 'bg-gray-400'
                                 }`}
                         />
 
@@ -101,21 +145,30 @@ function TrialCards({ trials }) {
                                 </h3>
 
                                 {/* Match badge */}
-                                <span
+                                {/* {trial.match?.score && (<span
                                     className={`
                                         shrink-0 inline-flex items-center px-2.5 py-0.5
                                         rounded-full text-xs font-bold tracking-wide
-                                        ${getMatchBadgeColor(trial.match_percentage)}
+                                        ${getMatchBadgeColor(trial.match?.score)}
                                     `}
                                 >
-                                    {trial.match_percentage}%
-                                </span>
+                                    {trial.match?.score}%
+                                </span>)} */}
+                                {trial.match?.score && (<span
+                                    className={`
+                                        shrink-0 inline-flex items-center px-2.5 py-0.5
+                                        rounded-full text-xs font-bold tracking-wide
+                                        ${getEligibilityColor(trial.match?.status)}
+                                    `}
+                                >
+                                    {convertEligibility(trial.match?.status)}
+                                </span>)}
                             </div>
 
                             {/* Eligibility criteria snippet */}
                             <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
-                                {trial?.eligibility_criteria?.slice(0, 140)}
-                                {trial?.eligibility_criteria?.length > 140 ? '…' : ''}
+                                {cleanEligibilitySummary(trial?.eligibility_criteria_summary?.slice(0, 140))}
+                                {trial?.eligibility_criteria_summary?.length > 140 ? '…' : ''}
                             </p>
 
                             {/* Footer row */}
@@ -157,9 +210,9 @@ function TrialCards({ trials }) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Accent bar */}
-                        <div className={`h-2 w-full shrink-0 ${modalData.match_percentage >= 90 ? 'bg-green-400'
-                                : modalData.match_percentage >= 50 ? 'bg-yellow-400'
-                                    : 'bg-red-400'
+                        <div className={`h-2 w-full shrink-0 ${modalData.match?.status === 'eligible' ? 'bg-green-400'
+                            : modalData.match?.status === 'likely_eligible' ? 'bg-yellow-400'
+                                : 'bg-gray-400'
                             }`} />
 
                         {/* Scrollable body */}
@@ -170,9 +223,9 @@ function TrialCards({ trials }) {
                                 <h2 className="text-lg font-semibold text-gray-900 leading-snug flex-1">
                                     {modalData.title}
                                 </h2>
-                                <span className={`shrink-0 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold tracking-wide ${getMatchBadgeColor(modalData.match_percentage)}`}>
-                                    {modalData.match_percentage}% Match
-                                </span>
+                                {modalData.match?.status && (<span className={`shrink-0 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold tracking-wide ${getEligibilityColor(modalData.match?.status)}`}>
+                                    {convertEligibility(modalData.match?.status)}
+                                </span>)}
                             </div>
 
                             {/* ── Overview grid ── */}
@@ -242,6 +295,28 @@ function TrialCards({ trials }) {
                                 </div>
                             )}
 
+                            {modalData.match?.reasons && (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm font-medium text-gray-500">Reasons for Trial Score</span>
+                                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
+                                        <h4 className="text-lg font-semibold mt-4">Met Inclusion</h4>
+                                        {renderList(modalData.match?.reasons.met_inclusion)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Failed Inclusion</h4>
+                                        {renderList(modalData.match?.reasons.failed_inclusion)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Triggered Inclusion</h4>
+                                        {renderList(modalData.match?.reasons.triggered_inclusion)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Missing Information</h4>
+                                        {renderList(modalData.match?.reasons.missing_information)}
+
+                                        <h4 className="text-lg font-semibold mt-4">Notes</h4>
+                                        {renderList(modalData.match?.reasons.notes)}
+                                    </p>
+                                </div>
+                            )}
+
                             {/* ── Study Description ── */}
                             {modalData.study_description && (
                                 <div className="flex flex-col gap-1">
@@ -252,13 +327,79 @@ function TrialCards({ trials }) {
                                 </div>
                             )}
 
+                            {/* ── Eligibility Criteria Summary ── */}
+                            {modalData.eligibility_criteria_summary && (
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-sm font-medium text-gray-500">
+                                        Eligibility Criteria Summary
+                                    </span>
+
+                                    <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-40 overflow-y-auto space-y-3">
+                                        {modalData.eligibility_criteria_summary
+                                            .split('##')
+                                            .filter(Boolean)
+                                            .map((section, index) => {
+                                                const [title, ...lines] = section.trim().split('\n');
+
+                                                return (
+                                                    <div key={index}>
+                                                        <h4 className="font-semibold text-gray-900 mb-1">
+                                                            {title.replace(/-/g, '').trim()}
+                                                        </h4>
+                                                        <ul className="list-disc pl-5 space-y-1">
+                                                            {lines
+                                                                .filter(line => line.trim().startsWith('-'))
+                                                                .map((line, i) => (
+                                                                    <li key={i}>
+                                                                        {line.replace('-', '').trim()}
+                                                                    </li>
+                                                                ))}
+                                                        </ul>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* ── Eligibility Criteria ── */}
-                            {modalData.eligibility_criteria && (
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-sm font-medium text-gray-500">Eligibility Criteria</span>
-                                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
-                                        {modalData.eligibility_criteria}
-                                    </p>
+                            {modalData.eligibility_summary_clinician_json && (
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-sm font-medium text-gray-500">
+                                        Eligibility Criteria
+                                    </span>
+
+                                    <div className="bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto space-y-4 text-sm text-gray-700">
+
+                                        {/* Inclusion */}
+                                        {modalData.eligibility_summary_clinician_json.inclusion_criteria?.length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-green-700 mb-1">
+                                                    Inclusion Criteria
+                                                </h4>
+                                                <ul className="list-disc pl-5 space-y-1">
+                                                    {modalData.eligibility_summary_clinician_json.inclusion_criteria.map((item, index) => (
+                                                        <li key={index}>{item}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {/* Exclusion */}
+                                        {modalData.eligibility_summary_clinician_json.exclusion_criteria?.length > 0 && (
+                                            <div>
+                                                <h4 className="font-semibold text-red-700 mb-1">
+                                                    Exclusion Criteria
+                                                </h4>
+                                                <ul className="list-disc pl-5 space-y-1">
+                                                    {modalData.eligibility_summary_clinician_json.exclusion_criteria.map((item, index) => (
+                                                        <li key={index}>{item}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                    </div>
                                 </div>
                             )}
 
@@ -280,8 +421,8 @@ function TrialCards({ trials }) {
                                                 </div>
                                                 {loc.status && (
                                                     <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${loc.status === 'RECRUITING' ? 'bg-green-100 text-green-700'
-                                                            : loc.status === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
-                                                                : 'bg-yellow-100 text-yellow-700'
+                                                        : loc.status === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
+                                                            : 'bg-yellow-100 text-yellow-700'
                                                         }`}>
                                                         {loc.status.charAt(0) + loc.status.slice(1).toLowerCase()}
                                                     </span>
