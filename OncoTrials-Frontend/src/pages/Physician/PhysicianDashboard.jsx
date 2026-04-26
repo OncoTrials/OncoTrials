@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
 import AddPatientForm from './AddPatientForm'
 import TrialsTable from './TrialsTable'
-import SearchTrialsForm from '../patient/SearchTrialsForm'
-import TrialCards from '../patient/TrialCards'
+import SearchTrialsForm from '../Patient/SearchTrialsForm'
+import TrialCards from '../Patient/TrialCards'
 
 const getUserMetadata = async () => {
     const { data: { user } } = await supabase.auth.getUser();
