@@ -114,7 +114,7 @@ function PhysicianCRCLoginForm() {
                             </div>
                         </div>
                     </div>
-                    <img src={'/workspace.png'} alt="Workspace Illustration" className='ml-10 h-[650px] mt-10' />
+                    <img src={'/workspace.png'} alt="Workspace Illustration" className='ml-10 h-[650px] mt-10 hidden md:block' />
                 </div>
             </div>
         </>
