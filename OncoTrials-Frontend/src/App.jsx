@@ -19,7 +19,7 @@ import CRCSettings from './pages/crc/CRCSettings'
 import CRCMatchingHub from './pages/crc/CRCMatchingHub';
 import CRCPatients from './pages/crc/CRCPatients'
 import './App.css'
-import PatientOnboarding from './pages/patient/PatientOnboarding';
+import PatientOnboarding from './pages/Patient/PatientOnboarding';
 import InputTrials from './pages/InputTrials';
 
 export const queryClient = new QueryClient();
