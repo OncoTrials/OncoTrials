@@ -2,8 +2,9 @@ name: Deploy to Firebase
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - 'OncoTrials-Frontend/**'
 
 jobs:
   build_and_deploy:
@@ -16,7 +17,14 @@ jobs:
         with:
           node-version: 18
 
-      - run: npm ci
-      - run: npm run build
+      - name: Install deps
+        run: npm ci
+        working-directory: OncoTrials-Frontend
 
-      - run: npx firebase-tools deploy --only hosting --token ${{ secrets.FIREBASE_TOKEN }}
+      - name: Build
+        run: npm run build
+        working-directory: OncoTrials-Frontend
+
+      - name: Deploy
+        run: npx firebase-tools deploy --only hosting --project YOUR_PROJECT_ID --token ${{ secrets.FIREBASE_TOKEN }}
+        working-directory: OncoTrials-Frontend
