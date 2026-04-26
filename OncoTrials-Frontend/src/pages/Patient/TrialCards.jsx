@@ -4,6 +4,9 @@ import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
 function TrialCards({ trials }) {
     const [modalData, setModalData] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedLocation, setSelectedLocation] = useState(
+        modalData?.locations?.[0] ?? null
+      );
 
     const trialsPerPage = 12;
     const totalPages = Math.ceil(trials.length / trialsPerPage);
@@ -87,6 +90,8 @@ function TrialCards({ trials }) {
             .replace(/##\s*/g, '')  // remove "##" and any trailing space
             .trim();
     };
+
+    console.log(import.meta.env.VITE_GOOGLE_API_KEY);
 
     const renderList = (items) => {
         if (!items || items.length === 0) {
@@ -407,32 +412,85 @@ function TrialCards({ trials }) {
                             {modalData.locations?.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <span className="text-sm font-medium text-gray-500">
-                                        Locations <span className="text-gray-400 font-normal">({modalData.locations.length})</span>
+                                        Locations{" "}
+                                        <span className="text-gray-400 font-normal">
+                                            ({modalData.locations.length})
+                                        </span>
                                     </span>
-                                    <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
-                                        {modalData.locations.map((loc, i) => (
-                                            <div key={i} className="flex items-start justify-between gap-3 bg-gray-50 rounded-xl p-3">
-                                                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                                    <span className="text-sm font-semibold text-gray-800 truncate">{loc.facility}</span>
-                                                    <span className="text-xs text-gray-500">
-                                                        {[loc.city, loc.state, loc.country].filter(Boolean).join(', ')}
-                                                        {loc.zip ? ` ${loc.zip}` : ''}
-                                                    </span>
+
+                                    <div className="flex flex-col gap-2">
+                                        {/* Scrollable location list */}
+                                        <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
+                                            {modalData.locations.map((loc, i) => (
+                                                <div
+                                                    key={i}
+                                                    onClick={() => setSelectedLocation(loc)}
+                                                    className={`flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer transition-colors ${selectedLocation === loc
+                                                            ? "bg-blue-50 ring-1 ring-blue-200"
+                                                            : "bg-gray-50 hover:bg-gray-100"
+                                                        }`}
+                                                >
+                                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                                        <span className="text-sm font-semibold text-gray-800 truncate">
+                                                            {loc.facility}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">
+                                                            {[loc.city, loc.state, loc.country].filter(Boolean).join(", ")}
+                                                            {loc.zip ? ` ${loc.zip}` : ""}
+                                                        </span>
+                                                    </div>
+                                                    {loc.status && (
+                                                        <span
+                                                            className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${loc.status === "RECRUITING"
+                                                                    ? "bg-green-100 text-green-700"
+                                                                    : loc.status === "COMPLETED"
+                                                                        ? "bg-gray-100 text-gray-600"
+                                                                        : "bg-yellow-100 text-yellow-700"
+                                                                }`}
+                                                        >
+                                                            {loc.status.charAt(0) + loc.status.slice(1).toLowerCase()}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                {loc.status && (
-                                                    <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${loc.status === 'RECRUITING' ? 'bg-green-100 text-green-700'
-                                                        : loc.status === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
-                                                            : 'bg-yellow-100 text-yellow-700'
-                                                        }`}>
-                                                        {loc.status.charAt(0) + loc.status.slice(1).toLowerCase()}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+
+                                        {/* Google Maps embed for selected location */}
+                                        {selectedLocation && (() => {
+                                            const query = [
+                                                selectedLocation.facility,
+                                                selectedLocation.city,
+                                                selectedLocation.state,
+                                                selectedLocation.country,
+                                                selectedLocation.zip,
+                                            ]
+                                                .filter(Boolean)
+                                                .join("+")
+                                                .replace(/\s+/g, "+");
+
+                                            return (
+                                                <div className="rounded-xl overflow-hidden border border-gray-200">
+                                                    <iframe
+                                                        width="100%"
+                                                        height="220"
+                                                        style={{ border: 0, display: "block" }}
+                                                        loading="lazy"
+                                                        allowFullScreen
+                                                        referrerPolicy="no-referrer-when-downgrade"
+                                                        src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_API_KEY}&q=${query}`}
+                                                    />
+                                                    <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
+                                                        📍 {selectedLocation.facility} —{" "}
+                                                        {[selectedLocation.city, selectedLocation.state, selectedLocation.country]
+                                                            .filter(Boolean)
+                                                            .join(", ")}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             )}
-
                         </div>
 
                         {/* Sticky footer */}
