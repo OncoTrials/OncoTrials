@@ -106,7 +106,7 @@ function PhysicianCRCRegisterForm() {
                                 required>
                                 <option value="" disabled defaultValue>Select your role</option>
                                 <option value="practitioner">Physician</option>
-                                <option value="crc">Clinical Research Coordinator</option>
+                                {/* <option value="crc">Clinical Research Coordinator</option> */}
                             </select>
                         </div>
 
