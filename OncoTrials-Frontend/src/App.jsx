@@ -11,8 +11,8 @@ import PatientSettings from './pages/Patient/PatientSettings';
 import ChangePassword from './pages/auth/ChangePassword';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AuthCallback from './pages/auth/AuthCallback';
-import PhysicianDashboard from './pages/physician/PhysicianDashboard';
-import PhysicianSettings from './pages/physician/PhysicianSettings';
+import PhysicianDashboard from './pages/Physician/PhysicianDashboard';
+import PhysicianSettings from './pages/Physician/PhysicianSettings';
 import CRCDashboard from './pages/crc/CRCDashboard';
 import CRCTrials from './pages/crc/CRCTrials';
 import CRCSettings from './pages/crc/CRCSettings'
