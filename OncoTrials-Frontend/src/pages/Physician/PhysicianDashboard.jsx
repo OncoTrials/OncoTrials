@@ -25,6 +25,7 @@ const getAllTrials = async () => {
 }
 
 function PhysicianDashboard() {
+    const [showFilters, setShowFilters] = useState(true);
 
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ['getUserMetadata'],
@@ -48,18 +49,36 @@ function PhysicianDashboard() {
 
     return (
         <>
-            <div>
-                <PhysicianNavbar user_email={response?.email} />
-                <div className="flex gap-4 pr-3 pl-3 mt-5 min-h-[650px]">
-                    <div className="sw-96 border shadow-2xl border-gray-300 rounded-2xl p-4">
-                        <SearchTrialsForm trials={trials} onFilter={setFilteredTrials}/>
-                    </div>
-                    <div className="flex-1 shadow-2xl border overflow-auto border-gray-300 rounded-lg">
-                        <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []}/>
-                    </div>
-                </div>
-            </div>
-        </>
+        <PhysicianNavbar user_email={response?.email} />
+        <div className="flex flex-col lg:flex-row gap-4 px-3 mt-5 min-h-[650px]">
+          {/* Mobile / desktop toggle */}
+          <div className="w-full lg:hidden">
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-left font-semibold shadow"
+            >
+              {showFilters ? "Hide Filters" : "Show Filters"}
+            </button>
+          </div>
+  
+          {/* Search Form */}
+          <div
+            className={`
+        w-full lg:w-96 border border-gray-300 shadow-2xl rounded-2xl p-4
+        ${showFilters ? "block" : "hidden"}
+        lg:block
+      `}
+          >
+            <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} />
+          </div>
+  
+          {/* Results */}
+          <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
+            <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []} />
+          </div>
+        </div>
+      </>
     )
 }
 
