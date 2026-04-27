@@ -6,7 +6,7 @@ function TrialCards({ trials }) {
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedLocation, setSelectedLocation] = useState(
         modalData?.locations?.[0] ?? null
-      );
+    );
 
     const trialsPerPage = 12;
     const totalPages = Math.ceil(trials.length / trialsPerPage);
@@ -80,6 +80,15 @@ function TrialCards({ trials }) {
         return 'bg-red-100 text-red-700 border border-red-200';
     };
 
+    const formatDate = (date) => {
+        if (!date) return null;
+    
+        return new Date(date).toLocaleDateString('en-US', {
+            month: 'short',
+            year: 'numeric'
+        });
+    };
+
     const openModal = (trial) => setModalData(trial);
     const closeModal = () => setModalData(null);
 
@@ -91,7 +100,6 @@ function TrialCards({ trials }) {
             .trim();
     };
 
-    console.log(import.meta.env.VITE_GOOGLE_API_KEY);
 
     const renderList = (items) => {
         if (!items || items.length === 0) {
@@ -168,6 +176,19 @@ function TrialCards({ trials }) {
                                 >
                                     {convertEligibility(trial.match?.status)}
                                 </span>)}
+
+                                {/* Completion date pill */}
+                                {trial.completion_date && (
+                                    <span
+                                        className="
+          shrink-0 inline-flex items-center px-2.5 py-0.5
+          rounded-full text-[10px] font-medium tracking-wide
+          bg-gray-100 text-gray-600 border border-gray-200
+        "
+                                    >
+                                        Ends {formatDate(trial.completion_date)}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Eligibility criteria snippet */}
@@ -426,8 +447,8 @@ function TrialCards({ trials }) {
                                                     key={i}
                                                     onClick={() => setSelectedLocation(loc)}
                                                     className={`flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer transition-colors ${selectedLocation === loc
-                                                            ? "bg-blue-50 ring-1 ring-blue-200"
-                                                            : "bg-gray-50 hover:bg-gray-100"
+                                                        ? "bg-blue-50 ring-1 ring-blue-200"
+                                                        : "bg-gray-50 hover:bg-gray-100"
                                                         }`}
                                                 >
                                                     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
@@ -442,10 +463,10 @@ function TrialCards({ trials }) {
                                                     {loc.status && (
                                                         <span
                                                             className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${loc.status === "RECRUITING"
-                                                                    ? "bg-green-100 text-green-700"
-                                                                    : loc.status === "COMPLETED"
-                                                                        ? "bg-gray-100 text-gray-600"
-                                                                        : "bg-yellow-100 text-yellow-700"
+                                                                ? "bg-green-100 text-green-700"
+                                                                : loc.status === "COMPLETED"
+                                                                    ? "bg-gray-100 text-gray-600"
+                                                                    : "bg-yellow-100 text-yellow-700"
                                                                 }`}
                                                         >
                                                             {loc.status.charAt(0) + loc.status.slice(1).toLowerCase()}
