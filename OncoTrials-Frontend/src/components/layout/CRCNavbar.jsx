@@ -30,7 +30,7 @@ function CRCNavbar({user_email}) {
         <>
             <Navbar fluid>
                 <NavbarBrand href="/crc-dashboard" className="flex items-center space-x-1 rtl:space-x-reverse">
-                    <img src={'/OncoTrials.png'} className="h-10 md:h-15" alt="OncoTrials Logo" />
+                    <img src={'/TrialsOnco.png'} className="h-10 md:h-15" alt="TrialsOnco Logo" />
                     <span className="self-center text-2xl font-semibold whitespace-nowrap text-white">OncoTrials</span>
                 </NavbarBrand>
                 <div className='flex items-center space-x-4 md:order-2'>

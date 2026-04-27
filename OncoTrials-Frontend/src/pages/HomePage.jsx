@@ -66,7 +66,7 @@ function HomePage() {
                         <div className='flex flex-row items-center justify-center gap-1'>
                             <img src={'/OncoTrials.png'} alt='OncoTrials Logo' className='h-20 w-20' />
                             <SplitText
-                                text="OncoTrials"
+                                text="TrialsOnco"
                                 className="text-5xl font-bold text-center"
                                 delay={100}
                                 duration={1}

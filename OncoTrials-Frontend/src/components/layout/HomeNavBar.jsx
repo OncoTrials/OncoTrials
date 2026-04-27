@@ -13,8 +13,8 @@ function HomeNavBar() {
         <>
             <Navbar fluid className='!bg-transparent !border-b-1'>
                 <NavbarBrand href="/" className="flex items-center space-x-1 rtl:space-x-reverse">
-                    <img src={'/OncoTrials.png'} className="h-10 md:h-15" alt="OncoTrials Logo" />
-                    <span className='self-center whitespace-nowrap text-xl md:text-2xl font-semibold text-black'>OncoTrials</span>
+                    <img src={'/TrialsOnco.png'} className="h-10 md:h-15" alt="OncoTrials Logo" />
+                    <span className='self-center whitespace-nowrap text-xl md:text-2xl font-semibold text-black'>TrialsOnco</span>
                 </NavbarBrand>
                 <div className='flex md:order-2 gap-2'>
                     <GetStartedDropdown label={'Get Started'} menuItems={DropdownItems} />

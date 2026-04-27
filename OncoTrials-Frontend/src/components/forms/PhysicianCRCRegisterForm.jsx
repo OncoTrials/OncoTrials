@@ -57,7 +57,7 @@ function PhysicianCRCRegisterForm() {
         <div className="flex justify-center items-center min-h-screen animate-fade-down">
             <div className="max-w-sm w-full rounded-lg shadow-lg bg-white p-6 space-y-6 border border-gray-200 mt-20">
                 <div className="space-y-2 text-center">
-                    <h1 className="text-3xl font-bold">Welcome To OncoTrials!</h1>
+                    <h1 className="text-3xl font-bold">Welcome To TrialsOnco!</h1>
 
                 </div>
                 <div className="space-y-4">
