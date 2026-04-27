@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Turnstile } from "@marsidev/react-turnstile";
 
 
-const loginUser = async ({ email, password }) => {
+const loginUser = async ({ email, password, captchaToken }) => {
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -49,7 +49,7 @@ function PhysicianCRCLoginForm() {
         if (!email || !password) {
             return;
         }
-        loginUserMutation.mutate({ email, password });
+        loginUserMutation.mutate({ email, password, captchaToken });
     }
     return (
         <>
