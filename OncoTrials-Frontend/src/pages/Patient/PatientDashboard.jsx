@@ -77,7 +77,7 @@ function PatientDashboard() {
 
         {/* Results */}
         <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
-            <TrialCards trials={displayedTrials} />
+          <TrialCards trials={displayedTrials} />
         </div>
       </div>
     </>
