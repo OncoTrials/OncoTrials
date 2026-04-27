@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import PatientNavBar from '../../components/layout/PatientNavBar'
-import SearchTrialsForm from './SearchTrialsForm'
-import AddPatientTable from './AddPatientTable'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../../utils/SupabaseClient'
 import { useQuery } from '@tanstack/react-query'
+import TrialCards from './TrialCards'
+import SearchTrialsForm from './SearchTrialsForm'
+
 
 const getUserMetadata = async () => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +56,7 @@ function PatientDashboard() {
           <SearchTrialsForm trials={trials} onFilter={setFilteredTrials}/>
         </div>
         <div className='flex-1 shadow-2xl border overflow-auto border-gray-300 rounded-lg'>
-          <AddPatientTable trials={filteredTrials.length > 0 ? filteredTrials : []} />
+          <TrialCards trials={filteredTrials.length > 0 ? filteredTrials : []} />
         </div>
       </div>
     </div>

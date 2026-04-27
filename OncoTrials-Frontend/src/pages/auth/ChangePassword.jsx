@@ -54,7 +54,7 @@ function ChangePassword() {
                     
                 </div>
                 <div className="space-y-4">
-                    <form id='form' method='POST' className='space-y-4'>
+                    <form id='form' method='POST' className='space-y-4' onClick={handleSubmit}>
                         <div className=" relative space-y-2">
                             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">Password</label>
                             <div>

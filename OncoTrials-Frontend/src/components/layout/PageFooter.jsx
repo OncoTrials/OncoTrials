@@ -11,6 +11,7 @@ function PageFooter() {
                         src={"/OncoTrials.png"}
                         alt="OncoTrials Logo"
                         name="OncoTrials™"
+                        className="!text-black"
                     />
                     <FooterLinkGroup className="!text-black">
                         <FooterLink href="#" className="hover:underline underline-offset-2">About</FooterLink>

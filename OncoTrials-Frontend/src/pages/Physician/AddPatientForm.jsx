@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { InfoIcon } from '@phosphor-icons/react'
 import FormButton from '../../components/buttons/FormButton'
+import EligibilityMatcher from '../../utils/EligibilityMatcher';
 
 function AddPatientForm({ trials, onFilter }) {
     const [gender, setGender] = useState('');
@@ -8,67 +9,101 @@ function AddPatientForm({ trials, onFilter }) {
     const [trialStatus, setTrialStatus] = useState('');
     const [cancerType, setCancerType] = useState('');
     const [biomarker, setBioMarker] = useState('');
+    const [ecogScore, setEcogScore] = useState('');
+    const [lineOfTreatment, setLineOfTreatment] = useState('');
     // console.log(gender, age, trialStatus, cancerType, biomarker);
 
+    const buildPatientObject = () => {
+        return {
+          gender,
+          age: age ? Number(age) : null,
+          cancerType,
+          biomarker,
+          ecog: null,
+          priorLinesOfTherapy: null,
+          pregnant: null,
+          hasILD: null,
+          hasMeasurableDisease: null,
+          daysSinceLastTherapy: null,
+        };
+      };
+      
+      const convertToYear = (ageString) => {
+        if (!ageString) return null;
+      
+        const [value, unit] = ageString.split(' ');
+        const numericValue = Number(value);
+      
+        if (!Number.isFinite(numericValue)) return null;
+      
+        if (unit === 'Years' || unit === 'Year') return numericValue;
+        if (unit === 'Months' || unit === 'Month') return numericValue / 12;
+        if (unit === 'Weeks' || unit === 'Week') return numericValue / 52;
+        if (unit === 'Days' || unit === 'Day') return numericValue / 365;
+      
+        return null;
+      };
+      
+      const handleSearch = () => {
+        const patient = buildPatientObject();
+      
+        const filtered = trials.filter((trial) => {
+          // Gender
+          const genderMatch =
+            !gender ||
+            gender === 'all' ||
+            trial.sex?.toLowerCase() === 'all' ||
+            trial.sex?.toLowerCase() === gender.toLowerCase();
+      
+          // Age
+          let ageMatch = true;
+          if (age) {
+            const trialMinAge = convertToYear(trial.minimum_age);
+            ageMatch = trialMinAge == null ? true : Number(age) >= trialMinAge;
+          }
+      
+          // Trial status
+          const statusMatch =
+            !trialStatus ||
+            trial.status?.toLowerCase() === trialStatus.toLowerCase();
+      
+          // Cancer type
+          const searchCondition = cancerType?.toLowerCase().trim();
+          const cancerTypeMatch =
+            !searchCondition ||
+            (Array.isArray(trial.conditions) &&
+              trial.conditions.some((cond) =>
+                cond.toLowerCase().includes(searchCondition)
+              ));
+      
+          // Biomarker
+          const searchBiomarker = biomarker?.toLowerCase().trim();
+          const biomarkerMatch =
+            !searchBiomarker ||
+            !trial.biomarker_criteria ||
+            trial.biomarker_criteria.toLowerCase().includes(searchBiomarker);
+      
+          return (
+            genderMatch &&
+            ageMatch &&
+            statusMatch &&
+            cancerTypeMatch &&
+            biomarkerMatch
+          );
+        });
+      
+        const results = filtered.map((trial) => {
+          const match = EligibilityMatcher.evaluatePatientAgainstTrial(patient, trial);
+      
+          return {
+            ...trial,
+            match,
+          };
+        });
 
-    const handleSearch = () => {
-        const results = trials.filter(trial => {
-            // --- Gender ---
-            const genderMatch =
-                !gender ||
-                gender === 'all' ||
-                trial.sex?.toLowerCase() === gender.toLowerCase()
-
-            // --- Age ---
-            let ageMatch = true
-            if (age) {
-                const trialMinAge = parseInt(trial.minimum_age) || 0 // e.g., "18 Years"
-                ageMatch = Number(age) >= trialMinAge
-            }
-
-            // --- Status ---
-            const statusMatch =
-                !trialStatus || trialStatus === '' ||
-                trial.status?.toLowerCase() === trialStatus.toLowerCase()
-
-            // --- Cancer Type ---
-            const cancerTypeMatch =
-                !cancerType ||
-                trial.conditions?.some(cond =>
-                    cond.toLowerCase().includes(cancerType.toLowerCase())
-                )
-
-            // --- Biomarker ---
-            const biomarkerMatch =
-                !biomarker || !trial.biomarker_criteria ||
-                (trial.biomarker_criteria &&
-                    trial.biomarker_criteria
-                        .toLowerCase()
-                        .includes(biomarker.toLowerCase()))
-            
-            // if (genderMatch === false){
-            //     console.log({
-                
-            //         trial: trial.title,
-            //         genderMatch,
-            //         ageMatch,
-            //         statusMatch,
-            //         cancerTypeMatch,
-            //         biomarkerMatch
-            //     })
-            // }
-
-            return (
-                genderMatch &&
-                ageMatch &&
-                statusMatch &&
-                cancerTypeMatch &&
-                biomarkerMatch
-            )
-        })
-
-        onFilter(results)
-    }
+      
+        onFilter(results);
+      };
 
     // console.log(filteredTrials);
 
