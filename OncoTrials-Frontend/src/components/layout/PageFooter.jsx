@@ -14,10 +14,9 @@ function PageFooter() {
                         className="!text-black"
                     />
                     <FooterLinkGroup className="!text-black">
-                        <FooterLink href="#" className="hover:underline underline-offset-2">About</FooterLink>
-                        <FooterLink href="#" className="hover:underline underline-offset-2">Privacy Policy</FooterLink>
-                        <FooterLink href="#" className="hover:underline underline-offset-2">Licensing</FooterLink>
-                        <FooterLink href="#" className="hover:underline underline-offset-2">Contact</FooterLink>
+                        <FooterLink href="/about" className="hover:underline underline-offset-2">About</FooterLink>
+                        <FooterLink href="/privacy-policy" className="hover:underline underline-offset-2">Privacy Policy</FooterLink>
+                        <FooterLink href="/contact" className="hover:underline underline-offset-2">Contact</FooterLink>
                     </FooterLinkGroup>
                 </div>
                 <FooterDivider />
