@@ -5,13 +5,15 @@ import PasswordRequirements from '../common/PasswordRequirements';
 import { useMutation } from '@tanstack/react-query';
 import supabase from '../../utils/SupabaseClient';
 import CustomAlert from '../common/Alert';
+import { Turnstile } from "@marsidev/react-turnstile";
 
-const createUser = async ({ email, password, role }) => {
+const createUser = async ({ email, password, role, captchaToken}) => {
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-            data: { role: role }
+            data: { role: role },
+            captchaToken
         }
     });
 
@@ -27,6 +29,7 @@ function PhysicianCRCRegisterForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState("");
+    const [captchaToken, setCaptchaToken] = useState(null);
 
     const createUserMutation = useMutation({
         mutationFn: createUser,
@@ -48,14 +51,14 @@ function PhysicianCRCRegisterForm() {
         }
 
 
-        createUserMutation.mutate({ email, password, role });
+        createUserMutation.mutate({ email, password, role, captchaToken });
     }
 
 
 
     return (
         <div className="flex justify-center items-center min-h-screen animate-fade-down">
-            <div className="max-w-sm w-full rounded-lg shadow-lg bg-white p-6 space-y-6 border border-gray-200 mt-20">
+            <div className="max-w-sm w-full rounded-lg shadow-lg bg-white p-6 space-y-6 border border-gray-200 mt-20 mb-20">
                 <div className="space-y-2 text-center">
                     <h1 className="text-3xl font-bold">Welcome To TrialsOnco!</h1>
 
@@ -120,6 +123,12 @@ function PhysicianCRCRegisterForm() {
                                 'Create Account'
                             )}
                         </button>
+                        <Turnstile
+                                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                    onSuccess={(token) => {
+                                        setCaptchaToken(token)
+                                    }}
+                                />
                     </form>
                     
                     {createUserMutation.isSuccess && (
