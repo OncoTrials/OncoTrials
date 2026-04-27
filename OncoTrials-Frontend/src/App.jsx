@@ -38,12 +38,13 @@ function App() {
           <Route path='/forgot-password' element={<ForgotPassword />} />
           <Route path='/change-password' element={<ChangePassword />} />
           <Route path='/auth/callback' element={<AuthCallback />} />
+          <Route path='/trials' element={<PatientDashboard />} />
           {/* Patient only routes */}
-          {/* <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
+          <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
             <Route path='/patient-dashboard' element={<PatientDashboard />} />
             <Route path='/patient-settings' element={<PatientSettings />} />
             <Route path='/patient-intake' element={<PatientOnboarding />} />
-          </Route> */}
+          </Route>
           {/* Physician only routes */}
           <Route element={<RequireAuth redirectTo='/physician-login' allowedRoles={['practitioner']} />} >
             <Route path='/physician-input-trials' element={<InputTrials />} />
