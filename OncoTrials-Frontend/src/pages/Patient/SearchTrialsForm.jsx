@@ -138,9 +138,10 @@ function SearchTrialsForm({ trials, onFilter }) {
         setCancerStage('')
         setCancerType('')
         setMutationBiomarker('')
+        setEcogScore('')
         setErrors({})
         setResultCount(null)
-        onFilter(trials);
+        onFilter(null);
         };
 
     // ── Shared input class ────────────────────────────────────────────────────
@@ -249,7 +250,7 @@ function SearchTrialsForm({ trials, onFilter }) {
                 <select
                     className={`${inputCls} border-gray-300`}
                     value={lineOfTreatment}
-                    onChange={(e) => setCancerStage(e.target.value)}
+                    onChange={(e) => setLineOfTreatment(e.target.value)}
                     id="line-of-treatment-input"
                 >
                     <option value="">Select</option>
