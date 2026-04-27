@@ -45,7 +45,7 @@ function App() {
             <Route path='/patient-intake' element={<PatientOnboarding />} />
           </Route> */}
           {/* Physician only routes */}
-          <Route element={<RequireAuth redirectTo='/physician-crc-login' allowedRoles={['practitioner']} />} >
+          <Route element={<RequireAuth redirectTo='/physician-login' allowedRoles={['practitioner']} />} >
             <Route path='/physician-input-trials' element={<InputTrials />} />
             <Route path='/physician-dashboard' element={<PhysicianDashboard />} />
             <Route path='/physician-settings' element={<PhysicianSettings />} />

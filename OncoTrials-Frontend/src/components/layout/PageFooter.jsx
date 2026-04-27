@@ -7,7 +7,7 @@ function PageFooter() {
             <div className="w-full text-center">
                 <div className="w-full justify-between sm:flex sm:items-center sm:justify-between">
                     <FooterBrand
-                        href="https://trialsonco.com/"
+                        href="/"
                         src={"/OncoTrials.png"}
                         alt="OncoTrials Logo"
                         name="OncoTrials™"
