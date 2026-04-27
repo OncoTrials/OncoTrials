@@ -25,7 +25,7 @@ function SearchTrialsForm({ trials, onFilter }) {
         const next = {}
         if (!diagnosis.trim()) next.diagnosis = 'Diagnosis is required'
         if (!cancerType.trim()) next.cancerType = 'Cancer Type is required'
-        if (!mutationBiomarker.trim()) next.mutationBiomarker = 'Mutation / Biomarker is required'
+        // if (!mutationBiomarker.trim()) next.mutationBiomarker = 'Mutation / Biomarker is required'
         if (age && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 120)) {
             next.age = 'Enter a valid age (0–120)'
         }
@@ -40,11 +40,8 @@ function SearchTrialsForm({ trials, onFilter }) {
             cancerType,
             mutationBiomarker,
             ecog: ecogScore,
-            priorLinesOfTherapy: lineOfTreatment,
-            pregnant: null,
-            hasILD: null,
-            hasMeasurableDisease: null,
-            daysSinceLastTherapy: null,
+            lineOfTreatment: lineOfTreatment ? Number(lineOfTreatment) : null,
+            cancerStage,
         };
     };
 
@@ -139,6 +136,7 @@ function SearchTrialsForm({ trials, onFilter }) {
         setCancerType('')
         setMutationBiomarker('')
         setEcogScore('')
+        setLineOfTreatment('')
         setErrors({})
         setResultCount(null)
         onFilter(null);
@@ -243,10 +241,12 @@ function SearchTrialsForm({ trials, onFilter }) {
                     <option value="stage ii">Stage II</option>
                     <option value="stage iii">Stage III</option>
                     <option value="stage iv">Stage IV</option>
+                    <option value="metastatic">Metastatic</option>
+                    <option value="advanced">Advanced</option>
                 </select>
             </div>
             <div className={fieldCls}>
-                <label className={labelCls} htmlFor="cancer-stage-input">Line of Treatment</label>
+                <label className={labelCls} htmlFor="line-of-treatment-input">Line of Treatment</label>
                 <select
                     className={`${inputCls} border-gray-300`}
                     value={lineOfTreatment}
@@ -254,9 +254,10 @@ function SearchTrialsForm({ trials, onFilter }) {
                     id="line-of-treatment-input"
                 >
                     <option value="">Select</option>
-                    <option value="first line">First Line</option>
-                    <option value="second line">Second Line</option>
-                    <option value="third line">Third Line</option>
+                    <option value="1">First Line</option>
+                    <option value="2">Second Line</option>
+                    <option value="3">Third Line</option>
+                    <option value="4">Fourth Line+</option>
                 </select>
             </div>
 
@@ -295,17 +296,15 @@ function SearchTrialsForm({ trials, onFilter }) {
             <div className={fieldCls}>
                 <label className={labelCls} htmlFor="mutation-biomarker-input">
                     Mutation or Biomarker (e.g., EGFR, KRAS)
-                    <span className="text-red-500">*</span>
                 </label>
                 <textarea
                     className={`${inputCls} border-gray-300`}
                     placeholder="Enter text here"
                     value={mutationBiomarker}
-                    onChange={(e) => { setMutationBiomarker(e.target.value); setErrors(p => ({ ...p, mutationBiomarker: undefined })) }}
+                    onChange={(e) => { setMutationBiomarker(e.target.value); }}
                     id="mutation-biomarker-input"
                     rows={5}
                 />
-               
             </div>
 
             {/* Actions */}
