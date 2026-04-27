@@ -64,7 +64,7 @@ function HomePage() {
                     <div className='flex flex-col items-center justify-center'>
 
                         <div className='flex flex-row items-center justify-center gap-1'>
-                            <img src={'/OncoTrials.png'} alt='OncoTrials Logo' className='h-20 w-20' />
+                            <img src={'/TrialsOnco.png'} alt='OncoTrials Logo' className='h-20 w-20' />
                             <SplitText
                                 text="TrialsOnco"
                                 className="text-5xl font-bold text-center"
