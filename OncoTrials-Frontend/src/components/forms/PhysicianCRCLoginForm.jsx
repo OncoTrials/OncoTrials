@@ -5,12 +5,14 @@ import { useMutation } from '@tanstack/react-query';
 import supabase from '../../utils/SupabaseClient';
 import CustomAlert from '../common/Alert';
 import { useNavigate } from 'react-router-dom';
+import { Turnstile } from "@marsidev/react-turnstile";
 
 
-const loginUser = async ({ email, password }) => {
+const loginUser = async ({ email, password, captchaToken }) => {
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {captchaToken},
     });
 
     if (error) throw error;
@@ -23,13 +25,13 @@ function PhysicianCRCLoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
-
+    const [captchaToken, setCaptchaToken] = useState(null);
     const loginUserMutation = useMutation({
         mutationFn: loginUser,
         onSuccess: (data) => {
             setEmail('');
             setPassword('');
-            navigate('/auth/callback' , {replace: true});
+            navigate('/auth/callback', { replace: true });
 
         },
         onError: (error) => {
@@ -43,10 +45,10 @@ function PhysicianCRCLoginForm() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!email || !password ) {
+        if (!email || !password) {
             return;
         }
-        loginUserMutation.mutate({ email, password });
+        loginUserMutation.mutate({ email, password, captchaToken });
     }
     return (
         <>
@@ -100,7 +102,14 @@ function PhysicianCRCLoginForm() {
                                         'Log In'
                                     )}
                                 </button>
+                                
                             </form>
+                            <Turnstile
+                                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                    onSuccess={(token) => {
+                                        setCaptchaToken(token)
+                                    }}
+                                />
                             {(loginUserMutation.isSuccess || message) && (
                                 <CustomAlert
                                     type={loginUserMutation.isSuccess ? 'success' : 'failure'}
@@ -110,11 +119,11 @@ function PhysicianCRCLoginForm() {
                             )}
 
                             <div className='flex justify-center'>
-                                <p className='text-sm'>Don't have an account? <Link to='/physician-crc-register' className='text-blue-400 hover:underline'>Sign Up</Link></p>
+                                <p className='text-sm'>Don't have an account? <Link to='/physician-register' className='text-blue-400 hover:underline'>Sign Up</Link></p>
                             </div>
                         </div>
                     </div>
-                    <img src={'/workspace.png'} alt="Workspace Illustration" className='ml-10 h-[650px] mt-10' />
+                    <img src={'/medical-tech-1.png'} alt="Workspace Illustration" className='ml-10 h-[400px] mt-10 hidden md:block' />
                 </div>
             </div>
         </>

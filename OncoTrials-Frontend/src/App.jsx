@@ -11,15 +11,15 @@ import PatientSettings from './pages/Patient/PatientSettings';
 import ChangePassword from './pages/auth/ChangePassword';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AuthCallback from './pages/auth/AuthCallback';
-import PhysicianDashboard from './pages/physician/PhysicianDashboard';
-import PhysicianSettings from './pages/physician/PhysicianSettings';
+import PhysicianDashboard from './pages/Physician/PhysicianDashboard';
+import PhysicianSettings from './pages/Physician/PhysicianSettings';
 import CRCDashboard from './pages/crc/CRCDashboard';
 import CRCTrials from './pages/crc/CRCTrials';
 import CRCSettings from './pages/crc/CRCSettings'
 import CRCMatchingHub from './pages/crc/CRCMatchingHub';
 import CRCPatients from './pages/crc/CRCPatients'
 import './App.css'
-import PatientOnboarding from './pages/patient/PatientOnboarding';
+import PatientOnboarding from './pages/Patient/PatientOnboarding';
 import InputTrials from './pages/InputTrials';
 
 export const queryClient = new QueryClient();
@@ -45,7 +45,7 @@ function App() {
             <Route path='/patient-intake' element={<PatientOnboarding />} />
           </Route> */}
           {/* Physician only routes */}
-          <Route element={<RequireAuth redirectTo='/physician-crc-login' allowedRoles={['practitioner']} />} >
+          <Route element={<RequireAuth redirectTo='/physician-login' allowedRoles={['practitioner']} />} >
             <Route path='/physician-input-trials' element={<InputTrials />} />
             <Route path='/physician-dashboard' element={<PhysicianDashboard />} />
             <Route path='/physician-settings' element={<PhysicianSettings />} />
