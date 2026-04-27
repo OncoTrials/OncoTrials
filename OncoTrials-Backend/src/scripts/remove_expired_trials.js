@@ -9,10 +9,10 @@
 // 3. completion_date is in the past.
 //
 // Usage:
-//   node src/scripts/remove_expired_trials.js
-//   DELETE_EXPIRED_DRY_RUN=false node src/scripts/remove_expired_trials.js
+//   node src/scripts/remove_expired_trials.js          (Dry Run)
+//   node src/scripts/remove_expired_trials.js --live   (Live Deletion)
 //
-// Defaults to DRY RUN (no deletions) unless DELETE_EXPIRED_DRY_RUN=false is set.
+// Defaults to DRY RUN (no deletions) unless --live flag is passed.
 
 require('dotenv').config();
 const { CLOSED_STATUSES } = require('../config/trialImportConfig');
@@ -23,8 +23,9 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.en
 const TABLE = 'trials';
 const BATCH_SIZE = 500;
 
-// Default to dry-run
-const DELETE_EXPIRED_DRY_RUN = (process.env.DELETE_EXPIRED_DRY_RUN || 'true').toLowerCase() !== 'false';
+// Default to dry-run unless --live flag is present
+const args = process.argv.slice(2);
+const DELETE_EXPIRED_DRY_RUN = !args.includes('--live');
 
 function getSupabase() {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {

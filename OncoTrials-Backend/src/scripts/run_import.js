@@ -70,12 +70,12 @@ async function main() {
 }
 
 process.on('SIGINT', () => {
-  console.log('🛑 Import interrupted by user');
+  console.log('Import interrupted by user❗');
   process.exit(130);
 });
 
 process.on('SIGTERM', () => {
-  console.log('🛑 Import terminated by system');
+  console.log('Import terminated by system❗');
   process.exit(143);
 });
 
