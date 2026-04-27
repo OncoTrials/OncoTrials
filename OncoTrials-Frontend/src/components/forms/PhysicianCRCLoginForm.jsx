@@ -5,12 +5,14 @@ import { useMutation } from '@tanstack/react-query';
 import supabase from '../../utils/SupabaseClient';
 import CustomAlert from '../common/Alert';
 import { useNavigate } from 'react-router-dom';
+import { Turnstile } from "@marsidev/react-turnstile";
 
 
 const loginUser = async ({ email, password }) => {
     const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {captchaToken},
     });
 
     if (error) throw error;
@@ -23,13 +25,14 @@ function PhysicianCRCLoginForm() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
+    const [captchaToken, setCaptchaToken] = useState(null);
 
     const loginUserMutation = useMutation({
         mutationFn: loginUser,
         onSuccess: (data) => {
             setEmail('');
             setPassword('');
-            navigate('/auth/callback' , {replace: true});
+            navigate('/auth/callback', { replace: true });
 
         },
         onError: (error) => {
@@ -43,7 +46,7 @@ function PhysicianCRCLoginForm() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!email || !password ) {
+        if (!email || !password) {
             return;
         }
         loginUserMutation.mutate({ email, password });
@@ -100,7 +103,14 @@ function PhysicianCRCLoginForm() {
                                         'Log In'
                                     )}
                                 </button>
+                                
                             </form>
+                            <Turnstile
+                                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                    onSuccess={(token) => {
+                                        setCaptchaToken(token)
+                                    }}
+                                />
                             {(loginUserMutation.isSuccess || message) && (
                                 <CustomAlert
                                     type={loginUserMutation.isSuccess ? 'success' : 'failure'}
