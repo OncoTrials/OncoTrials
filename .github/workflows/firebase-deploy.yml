@@ -1,0 +1,35 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'OncoTrials-Frontend/**'
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        run: npm ci
+        working-directory: OncoTrials-Frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: OncoTrials-Frontend
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+
+      - name: Deploy
+        run: npx firebase-tools deploy --only hosting --project bubbly-solution-494204-d2 --token ${{ secrets.FIREBASE_TOKEN }}
+        working-directory: OncoTrials-Frontend

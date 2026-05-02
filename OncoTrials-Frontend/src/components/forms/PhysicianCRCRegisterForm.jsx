@@ -106,7 +106,7 @@ function PhysicianCRCRegisterForm() {
                                 required>
                                 <option value="" disabled defaultValue>Select your role</option>
                                 <option value="practitioner">Physician</option>
-                                <option value="crc">Clinical Research Coordinator</option>
+                                {/* <option value="crc">Clinical Research Coordinator</option> */}
                             </select>
                         </div>
 
@@ -129,7 +129,7 @@ function PhysicianCRCRegisterForm() {
                         <CustomAlert type="failure" message={createUserMutation.error.message} />
                     )}
                     <div className='flex justify-center'>
-                        <p className='text-sm'>Already have an account? <Link to='/physician-crc-login' className='text-blue-400 hover:underline'>Sign In</Link></p>
+                        <p className='text-sm'>Already have an account? <Link to='/physician-login' className='text-blue-400 hover:underline'>Sign In</Link></p>
                     </div>
                 </div>
             </div>
