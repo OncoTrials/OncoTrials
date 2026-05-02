@@ -94,7 +94,7 @@ const PatientRegisterForm = () => {
         <div className="flex justify-center items-center min-h-screen">
             <div className="max-w-md w-full rounded-lg shadow-2xl  p-6 space-y-6 border border-gray-200 mt-20">
                 <div className="space-y-2 text-center">
-                    <h1 className="text-3xl font-bold">Welcome To OncoTrials!</h1>
+                    <h1 className="text-3xl font-bold">Welcome To TrialsOnco!</h1>
                     <p className="text-gray-600 dark:text-gray-400">Please create your account</p>
                 </div>
 

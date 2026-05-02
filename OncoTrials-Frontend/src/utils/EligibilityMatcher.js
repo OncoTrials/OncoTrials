@@ -73,6 +73,11 @@ class EligibilityMatcher {
     score += diagnosisCheck.scoreDelta;
     if (diagnosisCheck.hardFailure) hardFailure = true;
 
+    // Cancer stage
+    const stageCheck = this.checkCancerStage(patient, trial, inclusionCriteria);
+    this.applyCheckResult(stageCheck, reasons);
+    score += stageCheck.scoreDelta;
+
     // Biomarker
     const biomarkerCheck = this.checkBiomarker(
       patient,
@@ -96,35 +101,6 @@ class EligibilityMatcher {
     this.applyCheckResult(priorLinesCheck, reasons);
     score += priorLinesCheck.scoreDelta;
     if (priorLinesCheck.hardFailure) hardFailure = true;
-
-    // Pregnancy
-    const pregnancyCheck = this.checkPregnancy(patient, exclusionCriteria);
-    this.applyCheckResult(pregnancyCheck, reasons);
-    score += pregnancyCheck.scoreDelta;
-    if (pregnancyCheck.hardFailure) hardFailure = true;
-
-    // ILD / pneumonitis
-    const ildCheck = this.checkILD(patient, exclusionCriteria);
-    this.applyCheckResult(ildCheck, reasons);
-    score += ildCheck.scoreDelta;
-    if (ildCheck.hardFailure) hardFailure = true;
-
-    // Measurable disease
-    const measurableDiseaseCheck = this.checkMeasurableDisease(
-      patient,
-      inclusionCriteria
-    );
-    this.applyCheckResult(measurableDiseaseCheck, reasons);
-    score += measurableDiseaseCheck.scoreDelta;
-
-    // Recent therapy / washout
-    const recentTherapyCheck = this.checkRecentTherapy(
-      patient,
-      exclusionCriteria
-    );
-    this.applyCheckResult(recentTherapyCheck, reasons);
-    score += recentTherapyCheck.scoreDelta;
-    if (recentTherapyCheck.hardFailure) hardFailure = true;
 
     score = Math.max(0, Math.min(100, score));
 
@@ -410,7 +386,7 @@ class EligibilityMatcher {
       });
     }
 
-    const patientLines = Number(patient?.priorLinesOfTherapy);
+    const patientLines = Number(patient?.lineOfTreatment);
 
     if (!Number.isFinite(patientLines)) {
       return this.makeResult({
@@ -433,140 +409,62 @@ class EligibilityMatcher {
     });
   }
 
-  static checkPregnancy(patient, exclusionCriteria) {
-    const exclusionText = exclusionCriteria.join(" ").toLowerCase();
-    const mentionsPregnancy = exclusionText.includes("pregnan");
+  static checkCancerStage(patient, trial, inclusionCriteria) {
+    const patientStage = patient?.cancerStage?.toLowerCase()?.trim();
 
-    if (!mentionsPregnancy) {
+    const text = [
+      ...(Array.isArray(inclusionCriteria) ? inclusionCriteria : []),
+      trial?.study_description || "",
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const stageKeywords = [
+      "stage i",
+      "stage ii",
+      "stage iii",
+      "stage iv",
+      "metastatic",
+      "advanced",
+    ];
+
+    const trialStages = stageKeywords.filter((stage) => text.includes(stage));
+
+    // No stage requirement found
+    if (trialStages.length === 0) {
       return this.makeResult({
-        note: "No explicit pregnancy exclusion detected.",
+        note: "No explicit cancer stage requirement detected.",
         scoreDelta: 0,
       });
     }
 
-    if (patient?.pregnant == null) {
+    if (!patientStage) {
       return this.makeResult({
-        missing: "Pregnancy status may affect eligibility but is not provided.",
-        scoreDelta: -8,
-      });
-    }
-
-    if (patient.pregnant === true) {
-      return this.makeResult({
-        exclusion:
-          "Patient is pregnant and the trial appears to exclude pregnancy.",
-        scoreDelta: -40,
-        hardFailure: true,
-      });
-    }
-
-    return this.makeResult({
-      met: "Pregnancy exclusion does not appear to apply.",
-      scoreDelta: 6,
-    });
-  }
-
-  static checkILD(patient, exclusionCriteria) {
-    const exclusionText = exclusionCriteria.join(" ").toLowerCase();
-    const mentionsILD =
-      exclusionText.includes("ild") ||
-      exclusionText.includes("interstitial lung disease") ||
-      exclusionText.includes("pneumonitis");
-
-    if (!mentionsILD) {
-      return this.makeResult({
-        note: "No explicit ILD/pneumonitis exclusion detected.",
-        scoreDelta: 0,
-      });
-    }
-
-    if (patient?.hasILD == null) {
-      return this.makeResult({
-        missing:
-          "ILD / pneumonitis history may affect eligibility but is not provided.",
-        scoreDelta: -8,
-      });
-    }
-
-    if (patient.hasILD === true) {
-      return this.makeResult({
-        exclusion:
-          "Patient history of ILD/pneumonitis appears to conflict with trial exclusions.",
-        scoreDelta: -40,
-        hardFailure: true,
-      });
-    }
-
-    return this.makeResult({
-      met: "ILD / pneumonitis exclusion does not appear to apply.",
-      scoreDelta: 6,
-    });
-  }
-
-  static checkMeasurableDisease(patient, inclusionCriteria) {
-    const inclusionText = inclusionCriteria.join(" ").toLowerCase();
-    const requiresMeasurableDisease =
-      inclusionText.includes("measurable disease");
-
-    if (!requiresMeasurableDisease) {
-      return this.makeResult({
-        note: "No measurable disease requirement detected.",
-        scoreDelta: 0,
-      });
-    }
-
-    if (patient?.hasMeasurableDisease == null) {
-      return this.makeResult({
-        missing:
-          "Measurable disease requirement may apply, but patient data is not provided.",
-        scoreDelta: -8,
-      });
-    }
-
-    if (patient.hasMeasurableDisease === true) {
-      return this.makeResult({
-        met: "Patient meets measurable disease requirement.",
-        scoreDelta: 10,
-      });
-    }
-
-    return this.makeResult({
-      failed: "Patient does not appear to meet measurable disease requirement.",
-      scoreDelta: -15,
-    });
-  }
-
-  static checkRecentTherapy(patient, exclusionCriteria) {
-    const exclusionText = exclusionCriteria.join(" ").toLowerCase();
-    const washoutDays = this.extractRecentTherapyWindowDays(exclusionText);
-
-    if (washoutDays == null) {
-      return this.makeResult({
-        note: "No structured recent-therapy washout rule detected.",
-        scoreDelta: 0,
-      });
-    }
-
-    const daysSinceTherapy = Number(patient?.daysSinceLastTherapy);
-
-    if (!Number.isFinite(daysSinceTherapy)) {
-      return this.makeResult({
-        missing: `Trial appears to require at least ${washoutDays} days since last therapy, but this patient value is missing.`,
+        missing: "Patient cancer stage is not provided.",
         scoreDelta: -10,
       });
     }
 
-    if (daysSinceTherapy >= washoutDays) {
+    const matches = trialStages.some(
+      (stage) =>
+        patientStage.includes(stage.replace("stage ", "")) ||
+        patientStage.includes(stage)
+    );
+
+    if (matches) {
       return this.makeResult({
-        met: `Patient satisfies washout period (${daysSinceTherapy} days since last therapy, required >= ${washoutDays}).`,
-        scoreDelta: 10,
+        met: `Patient cancer stage appears compatible with trial requirement (${trialStages.join(
+          ", "
+        )}).`,
+        scoreDelta: 12,
       });
     }
 
     return this.makeResult({
-      exclusion: `Patient may be within the prohibited washout window (${daysSinceTherapy} days since therapy, required >= ${washoutDays}).`,
-      scoreDelta: -30,
-      hardFailure: true,
+      failed: `Patient cancer stage (${patientStage}) does not clearly match trial stage requirement (${trialStages.join(
+        ", "
+      )}).`,
+      scoreDelta: -15,
     });
   }
 
@@ -621,12 +519,6 @@ class EligibilityMatcher {
 
     return null;
   }
-
-  static extractRecentTherapyWindowDays(text) {
-    const match = text.match(/within\s*(\d+)\s*days/i);
-    return match ? Number(match[1]) : null;
-  }
-
   static convertAgeToYears(rawAge) {
     if (!rawAge || typeof rawAge !== "string") return null;
 

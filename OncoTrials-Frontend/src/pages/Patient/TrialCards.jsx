@@ -9,9 +9,9 @@ function TrialCards({ trials }) {
     );
 
     const trialsPerPage = 12;
-    const totalPages = Math.ceil(trials.length / trialsPerPage);
+    const totalPages = Math.ceil(trials?.length / trialsPerPage);
     const startIndex = (currentPage - 1) * trialsPerPage;
-    const paginatedData = trials.slice(startIndex, startIndex + trialsPerPage);
+    const paginatedData = trials?.slice(startIndex, startIndex + trialsPerPage);
 
     const handlePreviousPage = () => {
         if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -117,7 +117,7 @@ function TrialCards({ trials }) {
         );
     };
 
-    if (!trials || trials.length === 0) {
+    if (!trials || trials?.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-[750px]">
                 <p className="text-lg text-gray-500">No trials found. Please adjust your search criteria.</p>

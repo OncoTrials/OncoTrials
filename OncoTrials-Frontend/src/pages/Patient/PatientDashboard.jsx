@@ -38,7 +38,7 @@ function PatientDashboard() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: trials } = useQuery({
+  const { data: trials, isLoading: trialsLoading } = useQuery({
     queryKey: ['getAllTrials'],
     queryFn: getAllTrials,
     staleTime: 5 * 60 * 1000,
@@ -47,6 +47,7 @@ function PatientDashboard() {
   });
 
   const [filteredTrials, setFilteredTrials] = useState([]);
+  const displayedTrials = filteredTrials ?? trials;
 
   return (
     <>
@@ -76,7 +77,7 @@ function PatientDashboard() {
 
         {/* Results */}
         <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
-          <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []} />
+          <TrialCards trials={displayedTrials} />
         </div>
       </div>
     </>

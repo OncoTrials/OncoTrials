@@ -8,7 +8,7 @@ function PageFooter() {
                 <div className="w-full justify-between sm:flex sm:items-center sm:justify-between">
                     <FooterBrand
                         href="/"
-                        src={"/OncoTrials.png"}
+                        src={"/TrialsOnco.png"}
                         alt="OncoTrials Logo"
                         name="OncoTrials™"
                         className="!text-black"
@@ -20,7 +20,7 @@ function PageFooter() {
                     </FooterLinkGroup>
                 </div>
                 <FooterDivider />
-                <FooterCopyright href="#" by="OncoTrials™" year={2025} />
+                <FooterCopyright href="/" by="TrialsOnco™" year={2025} />
             </div>
         </Footer>
     );

@@ -31,7 +31,7 @@ OncoTrials is a web-based platform that helps patients discover personalized cli
 | Frontend   | React.js, Tailwind CSS           |
 | Backend    | Node.js, Express                 |
 | Auth & DB  | Supabase (Postgres + Auth)       |
-| Deployment | (You can add Vercel/Render/etc.) |
+| Deployment | Firebase + GCP                   |
 | Testing    | Jest, Playwright                 |
 
 ---

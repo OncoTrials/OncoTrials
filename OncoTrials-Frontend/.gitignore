@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .env
 
+hosting.ZGlzdA.cache
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
