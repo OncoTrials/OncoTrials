@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import CRCNavbar from '../../components/layout/CRCNavbar'
 import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
@@ -15,12 +15,6 @@ const getPatients = async () => {
   if (error) throw error;
   return data;
 }
-
-// const getEnrolledPatients = async () => {
-//   const { data, error } = await supabase.from('patients').select('*');
-//   if (error) throw error;
-//   return data;
-// }
 
 const StatCard = ({ label, value }) => (
   <div className='flex flex-row items-center justify-center h-48 gap-20'>

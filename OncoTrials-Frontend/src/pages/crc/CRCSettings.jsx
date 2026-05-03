@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import CRCNavbar from '../../components/layout/CRCNavbar';
 import supabase from '../../utils/SupabaseClient';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -42,7 +42,6 @@ function CRCSettings() {
   });
   const [emailResponse, setEmailResponse] = useState('');
   const [passwordResponse, setPasswordResponse] = useState('');
-  const [userData, setUserData] = useState(null);
 
   const updateEmailMutation = useMutation({
     mutationFn: updateEmail,
@@ -86,6 +85,7 @@ function CRCSettings() {
     }
   });
 
+  // NOTE for Jeremiah: isLoading, isError are unused
   const { data: response, isLoading, isError } = useQuery({
     queryKey: ['getUserMetadata'],
     queryFn: getUserMetadata,

@@ -61,6 +61,7 @@ export function RequireAuth({ redirectTo, allowedRoles }) {
     const { user, session, loading } = useAuth();
     const userId = user?.id;
 
+    // NOTE for Jeremiah: isError isn't being used, delete?
     const { data: role, isLoading: roleIsLoading, isError } = useQuery({
         queryKey: ['userRole', userId],
         queryFn: () => fetchUserRole(userId),

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import FormButton from "../../components/buttons/FormButton";
 
 function TrialFilterForm({ trials, onFilter }) {

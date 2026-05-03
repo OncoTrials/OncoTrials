@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
 
 function TrialCards({ trials }) {

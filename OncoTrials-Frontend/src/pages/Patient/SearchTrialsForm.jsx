@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import FormButton from '../../components/buttons/FormButton'
-import { InfoIcon, WarningIcon } from '@phosphor-icons/react'
+import { InfoIcon } from '@phosphor-icons/react'
 import EligibilityMatcher from '../../utils/EligibilityMatcher'
 
 // Normalize strings for comparison: lowercase, strip hyphens/underscores/spaces
@@ -18,6 +18,7 @@ function SearchTrialsForm({ trials, onFilter }) {
     const [ecogScore, setEcogScore] = useState('');
     const [lineOfTreatment, setLineOfTreatment] = useState('');
     const [errors, setErrors] = useState({});
+    // NOTE for Jeremiah: resultCount isn't being used, delete?
     const [resultCount, setResultCount] = useState(null)
 
     // ── Validation ────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import HomeNavBar from '../../components/layout/HomeNavBar';
 import supabase from '../../utils/SupabaseClient';
 import { useMutation } from '@tanstack/react-query';

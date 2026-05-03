@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { EyeClosedIcon, EyeIcon } from '@phosphor-icons/react'
 import PasswordRequirements from '../../components/common/PasswordRequirements';
 import supabase from '../../utils/SupabaseClient';
@@ -19,6 +19,7 @@ function ChangePassword() {
     const navigate = useNavigate();
     const [isVisible, setIsVisible] = useState(false);
     const [password, setPassword] = useState('');
+    // NOTE for Jeremiah: include data instead of message?
     const [message, setMessage] = useState('');
 
     const resetPasswordMutation = useMutation({

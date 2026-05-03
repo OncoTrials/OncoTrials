@@ -1,4 +1,3 @@
-import React from 'react'
 import HomeNavBar from '../../components/layout/HomeNavBar'
 import PatientRegisterForm from '../../components/forms/PatientRegisterForm'
 
