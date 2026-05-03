@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import CRCNavbar from '../../components/layout/CRCNavbar'
 import supabase from '../../utils/SupabaseClient'
@@ -34,6 +33,7 @@ const getAllRecruitingTrials = async () => {
 function CRCDashboard() {
 
 
+    // NOTE for Jeremiah: isLoading, isError are unused
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ['getUserMetadata'],
         queryFn: getUserMetadata,

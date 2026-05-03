@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import HomeNavBar from '../../components/layout/HomeNavBar';
 import supabase from '../../utils/SupabaseClient';
 import { useMutation } from '@tanstack/react-query';
@@ -68,7 +68,7 @@ function ForgotPassword() {
                                         id="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="jmensah123@example.com"
+                                        placeholder="john.doe@uchicago.edu"
                                         required
                                     />
                                 </div>

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import PatientNavBar from '../../components/layout/PatientNavBar'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../../utils/SupabaseClient'
 import { useQuery } from '@tanstack/react-query'
@@ -27,9 +26,11 @@ const getAllTrials = async () => {
 
 
 function PatientDashboard() {
+  // NOTE for Jeremiah: navigate isn't being used, delete?
   const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(true);
 
+  // NOTE for Jeremiah: is this being used? delete?
   const { data: response, isLoading, isError } = useQuery({
     queryKey: ['getUserMetadata'],
     queryFn: getUserMetadata,
@@ -38,6 +39,7 @@ function PatientDashboard() {
     refetchOnWindowFocus: false,
   });
 
+  // NOTE for Jeremiah: trialsLoading isn't being used, delete?
   const { data: trials, isLoading: trialsLoading } = useQuery({
     queryKey: ['getAllTrials'],
     queryFn: getAllTrials,

@@ -1,11 +1,8 @@
-import React from 'react'
 import HomeNavBar from '../components/layout/HomeNavBar'
 import SplitText from '../components/common/SplitText'
-import Footer from '../components/layout/PageFooter'
 import GetStartedDropdown from '../components/buttons/HomeDropdown'
-import { DarkThemeToggle } from 'flowbite-react'
 import PageFooter from '../components/layout/PageFooter'
-import { ShieldCheckIcon, MedalIcon, ClockIcon, CheckCircleIcon as CheckCircle, GpsFixIcon } from '@phosphor-icons/react'
+import { ShieldCheckIcon, MedalIcon, CheckCircleIcon as CheckCircle, GpsFixIcon } from '@phosphor-icons/react'
 import {easeInOut, motion} from 'motion/react'
 
 // Trust Indicators Component
@@ -93,47 +90,6 @@ function HomePage() {
                 </div>
 
                 <TrustIndicators />
-
-                {/* <div className='flex flex-col items-center justify-center min-h-full'>
-                    <div className='flex flex-col items-center justify-start space-y-5'>
-                        <h1 className='text-4xl font-bold'>
-                            '[Placeholder]'
-                        </h1>
-                        <h1 className='text-xl text-gray-500'>
-                            Built for Oncologists, by Oncologists
-                        </h1>
-                    </div>
-
-                    <div className='space-y-40'>
-                        <div className='flex flex-col md:flex-row  items-center justify-center gap-20'>
-                            <p className='max-w-md'>
-                                Integration of Molecular Data (NGS, IHC, MSI, etc.)
-                                Match patients based on real-time genomics (e.g., KRAS G12C, HER2 amplification, NTRK fusions).
-                            </p>
-                            <img src={'/vite.svg'} className='flex w-36 h-36' alt='Integration of Molecular Data' />
-
-                        </div>
-
-                        <div className='flex flex-col md:flex-row  items-center justify-center gap-20'>
-                            <img src={'/vite.svg'} className='flex w-36 h-36' alt='Geographic Proximity & Travel Feasibility' />
-                            <p className='max-w-md'>
-                                Geographic Proximity & Travel Feasibility
-                                Incorporate location-aware trial matching, with driving time estimates, travel stipends info, etc.
-                            </p>
-
-
-                        </div>
-
-                        <div className='flex flex-col md:flex-row  items-center justify-center gap-20'>
-                            <p className='max-w-md'>
-                                Community Site Matching
-                                Help non-academic sites refer patients quickly to nearby academic or industry-sponsored trials, enhancing trial access and accrual.
-                            </p>
-                            <img src={'/vite.svg'} className='flex w-36 h-36' alt='Community Site Matching' />
-
-                        </div>
-                    </div>
-                </div> */}
 
                 <PageFooter />
 

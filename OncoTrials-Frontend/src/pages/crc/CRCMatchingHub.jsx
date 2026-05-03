@@ -1,5 +1,3 @@
-import React from 'react'
-import CRCDashboard from './CRCDashboard'
 import { useQuery } from '@tanstack/react-query'
 import CRCNavbar from '../../components/layout/CRCNavbar'
 import TrialDashboard from './TrialDashboard'
@@ -23,6 +21,7 @@ const getAllTrials = async () => {
 
 function CRCMatchingHub() {
 
+  // NOTE for Jeremiah: isLoading, isError are unused
   const { data: response, isLoading, isError } = useQuery({
     queryKey: ['getUserMetadata'],
     queryFn: getUserMetadata,

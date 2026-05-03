@@ -1,5 +1,4 @@
-import React, { useState } from 'react'
-import { InfoIcon } from '@phosphor-icons/react'
+import { useState } from 'react'
 import FormButton from '../../components/buttons/FormButton'
 import EligibilityMatcher from '../../utils/EligibilityMatcher';
 
@@ -9,6 +8,7 @@ function AddPatientForm({ trials, onFilter }) {
     const [trialStatus, setTrialStatus] = useState('');
     const [cancerType, setCancerType] = useState('');
     const [biomarker, setBioMarker] = useState('');
+    // NOTE for Jeremiah: the 2 lines below aren't being used, delete?
     const [ecogScore, setEcogScore] = useState('');
     const [lineOfTreatment, setLineOfTreatment] = useState('');
     // console.log(gender, age, trialStatus, cancerType, biomarker);

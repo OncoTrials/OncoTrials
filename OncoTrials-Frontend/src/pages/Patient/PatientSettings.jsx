@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import PatientNavBar from '../../components/layout/PatientNavBar';
 import PasswordRequirements from '../../components/common/PasswordRequirements';
 import { useMutation, useQuery } from '@tanstack/react-query';

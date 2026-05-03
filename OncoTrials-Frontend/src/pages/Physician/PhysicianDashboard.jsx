@@ -1,10 +1,7 @@
-import React, { useState } from 'react'
-import PatientNavBar from '../../components/layout/PatientNavBar'
+import { useState } from 'react'
 import PhysicianNavbar from '../../components/layout/PhysicianNavbar'
 import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
-import AddPatientForm from './AddPatientForm'
-import TrialsTable from './TrialsTable'
 import SearchTrialsForm from '../Patient/SearchTrialsForm'
 import TrialCards from '../Patient/TrialCards'
 
@@ -27,6 +24,7 @@ const getAllTrials = async () => {
 function PhysicianDashboard() {
     const [showFilters, setShowFilters] = useState(true);
 
+    // NOTE for Jeremiah: isLoading, isError aren't being used, delete?
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ['getUserMetadata'],
         queryFn: getUserMetadata,
