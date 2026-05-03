@@ -20,7 +20,6 @@ function ChangePassword() {
     const [isVisible, setIsVisible] = useState(false);
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
-    const [PasswordRequirementsError, setPasswordRequirementsError] = useState(false);
 
     const resetPasswordMutation = useMutation({
         mutationFn: resetPassword,
@@ -36,10 +35,6 @@ function ChangePassword() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // if (password.length < 6) {
-        //     setPasswordRequirementsError(true);
-        //     return;
-        // }
         resetPasswordMutation.mutate({password});
     }
     

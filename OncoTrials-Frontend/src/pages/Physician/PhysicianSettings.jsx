@@ -163,7 +163,7 @@ function PatientSettings() {
             <div className="flex flex-col gap-4">
                 <div>
                     <div className="w-8 h-0.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-200 mb-3" />
-                    <h3 className="text-lg font-semibold text-blue-950">Email Address</h3>
+                    <h3 className="text-lg font-semibold text-blue-950">Organization Email Address</h3>
                     <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                         Update your email address. A verification link will be sent to confirm the change.
                     </p>
@@ -174,7 +174,7 @@ function PatientSettings() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="your@email.com"
+                        placeholder="john.doe@uchicago.edu"
                         disabled={updateEmailMutation.isPending}
                     />
                 </Field>

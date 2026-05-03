@@ -158,7 +158,7 @@ function CRCSettings() {
     <div className='w-full max-w-md space-y-6'>
       {/* Email Section */}
       <div>
-        <h3 className='text-lg font-semibold mb-2'>Email</h3>
+        <h3 className='text-lg font-semibold mb-2'>Organization Email</h3>
         <p className='text-sm text-gray-600 mb-3'>
           Update your email address. We'll send a verification link to confirm the change.
         </p>

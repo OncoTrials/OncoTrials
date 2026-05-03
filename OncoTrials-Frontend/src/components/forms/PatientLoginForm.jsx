@@ -110,7 +110,7 @@ const PatientLoginForm = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={signInMutation.isPending}
-                                placeholder="jmensah@example.com"
+                                placeholder="john.doe@gmail.com"
                                 required />
                         </div>
                         <div className=" relative space-y-2">
