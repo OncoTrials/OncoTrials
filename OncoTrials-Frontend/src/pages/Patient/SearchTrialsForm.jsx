@@ -11,7 +11,6 @@ function SearchTrialsForm({ trials, onFilter }) {
     const [gender, setGender] = useState('')
     const [age, setAge] = useState('')
     const [trialStatus, setTrialStatus] = useState('')
-    const [diagnosis, setDiagnosis] = useState('')
     const [cancerStage, setCancerStage] = useState('')
     const [cancerType, setCancerType] = useState('')
     const [mutationBiomarker, setMutationBiomarker] = useState('');
@@ -23,7 +22,6 @@ function SearchTrialsForm({ trials, onFilter }) {
     // ── Validation ────────────────────────────────────────────────────────────
     const validate = () => {
         const next = {}
-        if (!diagnosis.trim()) next.diagnosis = 'Diagnosis is required'
         if (!cancerType.trim()) next.cancerType = 'Cancer Type is required'
         // if (!mutationBiomarker.trim()) next.mutationBiomarker = 'Mutation / Biomarker is required'
         if (age && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 120)) {
@@ -77,11 +75,6 @@ function SearchTrialsForm({ trials, onFilter }) {
 
             const conditions = trial.conditions ?? []
 
-            const diagnosisMatch =
-                !diagnosis.trim() ||
-                conditions.some(condition =>
-                    condition.toLowerCase().includes(diagnosis.trim().toLowerCase())
-                )
 
             const cancerTypeMatch =
                 !cancerType.trim() ||
@@ -110,7 +103,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                 genderMatch &&
                 ageMatch &&
                 statusMatch &&
-                diagnosisMatch &&
                 cancerTypeMatch &&
                 stageMatch &&
                 biomarkerMatch
@@ -131,7 +123,6 @@ function SearchTrialsForm({ trials, onFilter }) {
         setGender('')
         setAge('')
         setTrialStatus('')
-        setDiagnosis('')
         setCancerStage('')
         setCancerType('')
         setMutationBiomarker('')
@@ -211,21 +202,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                 </select>
             </div>
 
-            {/* Diagnosis */}
-            <div className={fieldCls}>
-                <label className={labelCls} htmlFor="diagnosis-input">
-                    Diagnosis<span className="text-red-500">*</span>
-                </label>
-                <input
-                    className={`${inputCls} ${errors.diagnosis ? 'border-red-400' : 'border-gray-300'}`}
-                    placeholder="Enter diagnosis here"
-                    type="text"
-                    value={diagnosis}
-                    onChange={(e) => { setDiagnosis(e.target.value); setErrors(p => ({ ...p, diagnosis: undefined })) }}
-                    id="diagnosis-input"
-                />
-                {errors.diagnosis && <p className={errorCls}>{errors.diagnosis}</p>}
-            </div>
 
             {/* Stage */}
             <div className={fieldCls}>
