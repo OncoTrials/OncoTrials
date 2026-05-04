@@ -21,6 +21,7 @@ import CRCPatients from './pages/crc/CRCPatients'
 import './App.css'
 import PatientOnboarding from './pages/Patient/PatientOnboarding';
 import InputTrials from './pages/InputTrials';
+import AboutOncoTrials from './pages/AboutPage';
 
 export const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ function App() {
           <Route path='/change-password' element={<ChangePassword />} />
           <Route path='/auth/callback' element={<AuthCallback />} />
           <Route path='/trials' element={<PatientDashboard />} />
+          <Route path='/about' element={<AboutOncoTrials/>} />
           {/* Patient only routes */}
           <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
             <Route path='/patient-dashboard' element={<PatientDashboard />} />

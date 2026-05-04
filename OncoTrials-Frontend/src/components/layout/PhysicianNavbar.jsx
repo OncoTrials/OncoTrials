@@ -10,8 +10,8 @@ function PhysicianNavbar({user_email}) {
         <>
             <Navbar fluid>
                 <NavbarBrand href="/physician-dashboard" className="flex items-center space-x-1 rtl:space-x-reverse">
-                    <img src={'/OncoTrials.png'} className="h-10 md:h-15" alt="OncoTrials Logo" />
-                    <span className="self-center text-2xl font-semibold whitespace-nowrap text-white">OncoTrials</span>
+                    <img src={'/TrialsOnco.png'} className="h-10 md:h-15" alt="TrialsOnco Logo" />
+                    <span className="self-center text-2xl font-semibold whitespace-nowrap text-white">TrialsOcno</span>
                 </NavbarBrand>
                 <div className='flex items-center space-x-4 md:order-2'>
                     <Dropdown arrowIcon={false} inline label={<Avatar placeholderInitials={user_email && user_email.slice(0,1).toUpperCase()} rounded className='cursor-pointer'/>}>
