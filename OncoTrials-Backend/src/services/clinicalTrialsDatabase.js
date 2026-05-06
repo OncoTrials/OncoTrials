@@ -25,7 +25,7 @@ function chunkArray(arr, size) {
 async function loadExistingTrials() {
     const { data: existingRows, error: existingErr } = await supabase
         .from("trials")
-        .select("nct_id, id, status")
+        .select("nct_id, id, status, last_fetched_at")
         .limit(200000);
 
     if (existingErr) throw existingErr;
@@ -33,6 +33,24 @@ async function loadExistingTrials() {
     return new Map(
         (existingRows || []).filter((r) => r.nct_id).map((r) => [r.nct_id, r])
     );
+}
+
+async function getLastSuccessfulImportDate() {
+    try {
+        const { data, error } = await supabase
+            .from("trial_import_jobs")
+            .select("run_at")
+            .is("error_text", null)
+            .order("run_at", { ascending: false })
+            .limit(1);
+
+        if (error || !data || data.length === 0) return null;
+        
+        return new Date(data[0].run_at).toISOString().split('T')[0];
+    } catch (err) {
+        console.warn("Could not fetch last import date:", err);
+        return null;
+    }
 }
 
 // Fixed: Upsert with .select() to get reliable data back
@@ -163,6 +181,7 @@ async function logImportJob(jobData) {
 
 module.exports = { 
     loadExistingTrials,
+    getLastSuccessfulImportDate,
     upsertRowsAndSetCreator,
     fallbackBatchInsertWithRetries,
     updateExistingTrial,
