@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import TrialCards from './TrialCards'
 import SearchTrialsForm from './SearchTrialsForm'
 import HomeNavBar from '../../components/layout/HomeNavBar'
+import PageFooter from '../../components/layout/PageFooter'
 
 
 const getUserMetadata = async () => {
@@ -80,6 +81,7 @@ function PatientDashboard() {
           <TrialCards trials={displayedTrials} />
         </div>
       </div>
+      <PageFooter/>
     </>
 
   );
