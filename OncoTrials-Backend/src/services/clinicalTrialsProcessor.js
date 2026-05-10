@@ -76,30 +76,30 @@ function filterAllowedLocations(locations) {
 // Core row formatter
 
 function formatStudyToTrialRow(study) {
-    const ps = study.protocolSection || {};
-    const idm = ps.identificationModule || {};
-    const sm = ps.statusModule || {};
-    const dm = ps.descriptionModule || {};
-    const cm = ps.conditionsModule || {};
-    const em = ps.eligibilityModule || {};
-    const clm = ps.contactsLocationsModule || {};
+    const protocolSection = study.protocolSection || {};
+    const identificationModule = protocolSection.identificationModule || {};
+    const statusModule = protocolSection.statusModule || {};
+    const descriptionModule = protocolSection.descriptionModule || {};
+    const conditionsModule = protocolSection.conditionsModule || {};
+    const eligibilityModule = protocolSection.eligibilityModule || {};
+    const contactsLocationsModule = protocolSection.contactsLocationsModule || {};
 
-    const nct_id = idm.nctId || null;
+    const nct_id = identificationModule.nctId || null;
 
     const sponsor =
-        ps.sponsorCollaboratorsModule?.leadSponsor?.name ||
-        ps.sponsorCollaboratorsModule?.leadSponsor?.agency ||
-        (idm.organization && idm.organization.fullName) || null;
+        protocolSection.sponsorCollaboratorsModule?.leadSponsor?.name ||
+        protocolSection.sponsorCollaboratorsModule?.leadSponsor?.agency ||
+        (identificationModule.organization && identificationModule.organization.fullName) || null;
 
-    const organization = (idm.organization && idm.organization.fullName) || null;
-    const title = idm.briefTitle || idm.officialTitle || null;
-    const summary = dm.briefSummary || dm.detailedDescription || null;
-    const lastKnownStatus = sm.lastKnownStatus || sm.overallStatus || null;
-    const conditions = cm.conditions && Array.isArray(cm.conditions) ? cm.conditions : null;
-    const sex = em.sex || null;
-    const minimumAge = em.minimumAge || null;
+    const organization = (identificationModule.organization && identificationModule.organization.fullName) || null;
+    const title = identificationModule.briefTitle || identificationModule.officialTitle || null;
+    const summary = descriptionModule.briefSummary || descriptionModule.detailedDescription || null;
+    const lastKnownStatus = statusModule.lastKnownStatus || statusModule.overallStatus || null;
+    const conditions = conditionsModule.conditions && Array.isArray(conditionsModule.conditions) ? conditionsModule.conditions : null;
+    const sex = eligibilityModule.sex || null;
+    const minimumAge = eligibilityModule.minimumAge || null;
 
-    const allLocations = clm.locations && Array.isArray(clm.locations) ? clm.locations : null;
+    const allLocations = contactsLocationsModule.locations && Array.isArray(contactsLocationsModule.locations) ? contactsLocationsModule.locations : null;
 
     // Keep only locations in allowed countries
     const allowedLocations = filterAllowedLocations(allLocations || []);
@@ -121,23 +121,23 @@ function formatStudyToTrialRow(study) {
         }
     }
 
-    const start_date = parseDateString(sm.startDateStruct?.date || null);
-    const primary_completion_date = parseDateString(sm.primaryCompletionDateStruct?.date || null);
-    const completion_date = parseDateString(sm.completionDateStruct?.date || null);
+    const start_date = parseDateString(statusModule.startDateStruct?.date || null);
+    const primary_completion_date = parseDateString(statusModule.primaryCompletionDateStruct?.date || null);
+    const completion_date = parseDateString(statusModule.completionDateStruct?.date || null);
 
     const isClosed = CLOSED_STATUSES.has((lastKnownStatus || "").toString().toUpperCase());
     const closed_at = isClosed ? completion_date || primary_completion_date || null : null;
 
     const eligText =
-        (em.eligibilityCriteria && (em.eligibilityCriteria.textblock || em.eligibilityCriteria)) ||
-        em.criteria?.textblock || dm.detailedDescription || dm.briefSummary || null;
+        (eligibilityModule.eligibilityCriteria && (eligibilityModule.eligibilityCriteria.textblock || eligibilityModule.eligibilityCriteria)) ||
+        eligibilityModule.criteria?.textblock || descriptionModule.detailedDescription || descriptionModule.briefSummary || null;
 
     const biomarker_criteria = extractBiomarkersFromText(eligText) || null;
     const source_version = study.versionHolder || study.version || null;
 
     return {
         nct_id, sponsor, organization, title, summary, status: lastKnownStatus,
-        study_description: dm.detailedDescription || null, conditions, sex,
+        study_description: descriptionModule.detailedDescription || null, conditions, sex,
         minimum_age: minimumAge, location_city, location_state, location_country,
         latitude, longitude, locations, eligibility_criteria: eligText,
         biomarker_criteria, start_date, primary_completion_date, completion_date,
