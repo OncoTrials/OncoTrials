@@ -1,5 +1,5 @@
 import { ArrowCircleLeftIcon, ArrowCircleRightIcon, DotsThreeCircleIcon } from '@phosphor-icons/react';
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 function TrialsTable({ trials }) {
 

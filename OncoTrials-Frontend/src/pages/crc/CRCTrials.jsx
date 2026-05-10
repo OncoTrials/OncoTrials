@@ -1,8 +1,5 @@
-import React from 'react'
-import CRCDashboard from './CRCDashboard'
 import { useQuery } from '@tanstack/react-query'
 import CRCNavbar from '../../components/layout/CRCNavbar'
-import TrialDashboard from './TrialDashboard'
 import supabase from '../../utils/SupabaseClient'
 
 const getUserMetadata = async () => {
@@ -23,6 +20,7 @@ const getAllTrials = async () => {
 
 function CRCTrials() {
 
+  // NOTE for Jeremiah: isLoading, isError are unused
   const { data: response, isLoading, isError } = useQuery({
     queryKey: ['getUserMetadata'],
     queryFn: getUserMetadata,
@@ -31,6 +29,7 @@ function CRCTrials() {
     refetchOnWindowFocus: false,
   });
 
+  // NOTE for Jeremiah: is this being used?
   const { data: trials } = useQuery({
     queryKey: ['getAllTrials'],
     queryFn: getAllTrials,
@@ -42,7 +41,7 @@ function CRCTrials() {
 
 
 
-
+// NOTE for Jeremiah: should we remove the below hardcoded lines?
   return (
     <>
       <div>

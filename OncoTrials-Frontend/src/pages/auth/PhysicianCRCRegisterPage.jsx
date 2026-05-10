@@ -1,4 +1,3 @@
-import React from 'react'
 import PhysicianCRCRegisterForm from '../../components/forms/PhysicianCRCRegisterForm'
 import HomeNavBar from '../../components/layout/HomeNavBar'
 

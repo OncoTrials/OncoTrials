@@ -1,16 +1,23 @@
-const { jwtVerify } = require('jose');
+// // middleware/verifyUser.js
+// const jwt = require('jsonwebtoken');
 
-async function verifyUser(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+// // Replace this with your Supabase JWT secret from your Supabase project settings
+// const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
 
-    try {
-        const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET));
-        req.user = payload;
-        next();
-    } catch (err) {
-        return res.status(401).json( { error: 'Invalid Token' });
-    }    
-}
+// module.exports = function verifyUser(req, res, next) {
+//   const authHeader = req.headers['authorization'];
+//   const token = authHeader && authHeader.split(' ')[1];
 
-module.exports = verifyUser;
+//   if (!token) {
+//     return res.status(401).json({ error: 'Missing auth token' });
+//   }
+
+//   try {
+//     const decoded = jwt.verify(token, SUPABASE_JWT_SECRET);
+//     req.user = decoded;
+//     next();
+//   } catch (err) {
+//     console.error('JWT verification failed:', err.message);
+//     return res.status(401).json({ error: 'Invalid or expired token' });
+//   }
+// };

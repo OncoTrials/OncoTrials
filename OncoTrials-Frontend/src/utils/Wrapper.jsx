@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import supabase from './SupabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';

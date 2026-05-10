@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.env
+.git
+.github
+*.md
+Dockerfile
+.dockerignore
+OncoTrials-Frontend
+personal_notes

@@ -15,6 +15,7 @@ class EligibilityMatcher {
       ? clinicianJson.inclusion_criteria
       : [];
 
+    // NOTE for Jeremiah: is the below being used, delete?
     const exclusionCriteria = Array.isArray(clinicianJson.exclusion_criteria)
       ? clinicianJson.exclusion_criteria
       : [];

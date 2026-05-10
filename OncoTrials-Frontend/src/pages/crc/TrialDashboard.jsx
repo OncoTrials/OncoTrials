@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import TrialFilterForm from "./TrialFilterForm";
 import TrialTable from "./TrialTable";
 

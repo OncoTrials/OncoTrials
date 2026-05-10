@@ -1,4 +1,3 @@
-import React from "react";
 import { DotsThreeCircleIcon, ArrowCircleLeftIcon, ArrowCircleRightIcon } from "@phosphor-icons/react";
 
 const STATUS_CONFIG = {
@@ -24,6 +23,7 @@ function StatusBadge({ status }) {
 }
 
 function TrialTable({ data, currentPage, totalPages, onNextPage, onPrevPage }) {
+    // NOTE for Jeremiah: this isn't being used, delete?
     const convertStatus = (status) => {
         if (!status) return "Unknown";
         return status.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

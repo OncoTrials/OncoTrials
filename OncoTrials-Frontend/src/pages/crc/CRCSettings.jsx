@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import CRCNavbar from '../../components/layout/CRCNavbar';
 import supabase from '../../utils/SupabaseClient';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -42,7 +42,6 @@ function CRCSettings() {
   });
   const [emailResponse, setEmailResponse] = useState('');
   const [passwordResponse, setPasswordResponse] = useState('');
-  const [userData, setUserData] = useState(null);
 
   const updateEmailMutation = useMutation({
     mutationFn: updateEmail,
@@ -86,6 +85,7 @@ function CRCSettings() {
     }
   });
 
+  // NOTE for Jeremiah: isLoading, isError are unused
   const { data: response, isLoading, isError } = useQuery({
     queryKey: ['getUserMetadata'],
     queryFn: getUserMetadata,
@@ -158,7 +158,7 @@ function CRCSettings() {
     <div className='w-full max-w-md space-y-6'>
       {/* Email Section */}
       <div>
-        <h3 className='text-lg font-semibold mb-2'>Email</h3>
+        <h3 className='text-lg font-semibold mb-2'>Organization Email</h3>
         <p className='text-sm text-gray-600 mb-3'>
           Update your email address. We'll send a verification link to confirm the change.
         </p>

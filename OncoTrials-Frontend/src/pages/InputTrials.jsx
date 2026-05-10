@@ -1,5 +1,4 @@
-import React, { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef } from 'react'
 import PhysicianNavbar from '../components/layout/PhysicianNavbar'
 import FormButton from '../components/buttons/FormButton'
 import supabase from '../utils/SupabaseClient'

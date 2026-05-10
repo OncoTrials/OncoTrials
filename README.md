@@ -115,6 +115,63 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 ---
 
+## 🛠️ Scripts & Automation
+
+The project includes several utility scripts for managing the clinical trials database. These are located in `OncoTrials-Backend/src/scripts/`.
+
+### 🔄 Trial Import
+Fetches and syncs trials from ClinicalTrials.gov.
+```bash
+# Run the import (Incremental by default)
+node OncoTrials-Backend/src/scripts/run_import.js
+```
+
+### 🧹 Database Cleanup
+Removes expired trials (closed status or past dates) or trials from non-allowed countries.
+```bash
+# Remove expired trials (Dry Run)
+node OncoTrials-Backend/src/scripts/remove_expired_trials.js
+
+# Remove expired trials (Live Deletion)
+node OncoTrials-Backend/src/scripts/remove_expired_trials.js --live
+
+# Remove trials from non-allowed countries (Dry Run)
+node OncoTrials-Backend/src/scripts/remove_non_allowed_country_trials.js
+
+# Remove trials from non-allowed countries (Live Deletion)
+node OncoTrials-Backend/src/scripts/remove_non_allowed_country_trials.js --live
+```
+
+---
+
+## ☁️ GCP Deployment (Cloud Run + Cloud Scheduler)
+
+For a reliable, low-cost automation solution with mobile-friendly monitoring, we use **Google Cloud Run Jobs** and **Cloud Scheduler**.
+
+### 1. Prerequisites
+*   [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed and initialized (`gcloud init`).
+*   An active GCP Project with billing enabled (the Free Tier covers most of this).
+
+### 2. Deployment Steps
+1.  **Enable APIs:**
+    ```bash
+    gcloud services enable run.googleapis.com cloudscheduler.googleapis.com
+    ```
+2.  **Build and Push Container:**
+    Create a `Dockerfile` in the backend and push to Artifact Registry.
+3.  **Create Cloud Run Job:**
+    Deploy the script as a Job (not a Service) so it only runs when needed.
+4.  **Schedule the Job:**
+    Use Cloud Scheduler to trigger the Job (e.g., every 2 hours).
+
+### 3. Mobile Monitoring
+Download the **Google Cloud Console** app on Android to:
+*   View real-time logs.
+*   Check the status of scheduled runs.
+*   Manually trigger jobs from your phone.
+
+---
+
 ## 🛡️ Security Practices
 
 * JWT validation with Supabase public key

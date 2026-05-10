@@ -1,8 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { RequireAuth } from './utils/Auth';
 import HomePage from './pages/HomePage';
-import PatientLoginPage from './pages/Patient/PatientLoginPage';
-import PatientRegister from './pages/Patient/PatientRegister';
 import PhysicianCRCRegisterPage from './pages/auth/PhysicianCRCRegisterPage';
 import PhysicianCRCLoginPage from './pages/auth/PhysicianCRCLoginPage';
 import ForgotPassword from './pages/auth/ForgotPassword';
