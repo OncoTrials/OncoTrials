@@ -1,33 +1,62 @@
 // src/services/clinicalTrialsService.js
 const { fetchStudiesPage, respectRateLimit } = require('./clinicalTrialsApi');
-const { formatStudyToTrialRow, shouldSkipNewTrial } = require('./clinicalTrialsProcessor');
-const { 
+const {
+    formatStudyToTrialRow,
+    shouldSkipNewTrial,
+    hasAllowedLocation,
+    buildUpdatePayload,
+    CLOSED_STATUSES,
+} = require('./clinicalTrialsProcessor');
+const {
     loadExistingTrials,
+    getLastSuccessfulImportDate,
     upsertRowsAndSetCreator,
     fallbackBatchInsertWithRetries,
     updateExistingTrial,
-    logImportJob
+    logImportJob,
 } = require('./clinicalTrialsDatabase');
 
 async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
     const startTs = Date.now();
 
-    // preload existing nct ids and statuses
+    // Preload existing NCT IDs and statuses
     const existingByNct = await loadExistingTrials();
+    
+    // Get last successful run date for incremental sync
+    const lastUpdatePostDate = await getLastSuccessfulImportDate();
+    if (lastUpdatePostDate) {
+        console.log(`📡 Incremental sync enabled: fetching trials updated since ${lastUpdatePostDate}`);
+    } else {
+        console.log(`📡 Full sync: fetching all trials (no previous successful run found)`);
+    }
 
     let pageToken = null;
     let pagesFetched = 0;
     let totalInserted = 0;
     let totalUpdated = 0;
+    let totalSkippedCountry = 0;
+    let totalSkippedClosed = 0;
+    let totalUnchanged = 0;
 
     do {
-        const { studies, nextPageToken } = await fetchStudiesPage({ query, pageToken });
+        const { studies, nextPageToken } = await fetchStudiesPage({ 
+            query, 
+            pageToken,
+            lastUpdatePostDate 
+        });
         pageToken = nextPageToken;
 
-        const rowsToUpsert = [];
-        const rowsToUpdate = [];
+        const batchToUpsert = [];
 
         for (const study of studies) {
+            // Country guard
+            const studyLocations =
+                study.protocolSection?.contactsLocationsModule?.locations;
+            if (!hasAllowedLocation(studyLocations || [])) {
+                totalSkippedCountry++;
+                continue;
+            }
+
             const row = formatStudyToTrialRow(study);
             if (!row.nct_id) {
                 console.log("Skipping study without nct_id");
@@ -35,59 +64,51 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
             }
 
             const existing = existingByNct.get(row.nct_id);
+
             if (existing) {
-                // prepare update payload if needed
-                const remoteStatus = (row.status || "").toString();
-                const localStatus = (existing.status || "").toString();
-                const updatePayload = { last_fetched_at: row.last_fetched_at };
+                // Update path
+                const { payload, hasChange } = buildUpdatePayload(row, existing);
 
-                let needsUpdate = false;
-                if (remoteStatus !== localStatus) {
-                    needsUpdate = true;
-                    updatePayload.status = row.status;
-                    if (row.closed_at) updatePayload.closed_at = row.closed_at;
-                    updatePayload.primary_completion_date = row.primary_completion_date || null;
-                    updatePayload.completion_date = row.completion_date || null;
-                    updatePayload.study_description = row.study_description || null;
-                    updatePayload.summary = row.summary || null;
+                if (hasChange) {
+                    batchToUpsert.push(row); // Use full row for upsert
+                    totalUpdated++;
                 } else {
-                    needsUpdate = true;
+                    // Still bump last_fetched_at in DB
+                    batchToUpsert.push({
+                        ...existing, // Start with existing data
+                        last_fetched_at: row.last_fetched_at 
+                    });
+                    totalUnchanged++;
                 }
-
-                if (needsUpdate)
-                    rowsToUpdate.push({ nct_id: row.nct_id, payload: updatePayload });
             } else {
-                // New trial candidate: skip if closed or completion in past
+                // Insert path
                 if (shouldSkipNewTrial(row)) {
-                    console.log("Skipping new trial (closed/completed):", row.nct_id, row.title);
+                    totalSkippedClosed++;
                     continue;
                 }
-                const rowForInsert = { ...row, created_by: process.env.IMPORTER_USER_ID || null };
-                rowsToUpsert.push(rowForInsert);
+                batchToUpsert.push(row);
+                totalInserted++;
             }
         }
 
-        // count how many of the upsert candidates are actually new
-        const newCandidatesCount = rowsToUpsert
-            .map((r) => r.nct_id)
-            .filter((n) => n && !existingByNct.has(n)).length;
-
-        // Upsert new rows (preferred)
-        if (rowsToUpsert.length > 0) {
-            const upsertResult = await upsertRowsAndSetCreator(rowsToUpsert);
+        // Batch Upsert for the entire page
+        if (batchToUpsert.length > 0) {
+            const upsertResult = await upsertRowsAndSetCreator(batchToUpsert);
             if (upsertResult.error) {
-                console.warn("Upsert failed; falling back to batch insert:", upsertResult.error);
-                const fallbackResult = await fallbackBatchInsertWithRetries(rowsToUpsert);
-                totalInserted += fallbackResult.insertedCount || 0;
-            } else {
-                totalInserted += newCandidatesCount;
+                console.warn(
+                    "Batch upsert failed; falling back to individual updates (slow):",
+                    upsertResult.error
+                );
+                // Fallback for safety (though batch upsert is preferred)
+                for (const row of batchToUpsert) {
+                    await upsertRowsAndSetCreator([row]);
+                }
             }
-        }
-
-        // apply updates
-        for (const u of rowsToUpdate) {
-            const success = await updateExistingTrial(u.nct_id, u.payload);
-            if (success) totalUpdated++;
+            
+            // Update local cache
+            for (const r of batchToUpsert) {
+                if (r.nct_id) existingByNct.set(r.nct_id, r);
+            }
         }
 
         pagesFetched += 1;
@@ -98,15 +119,25 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
 
     const durationSeconds = (Date.now() - startTs) / 1000;
 
-    // write job summary
     await logImportJob({
         pages_fetched: pagesFetched,
         total_inserted: totalInserted,
         total_updated: totalUpdated,
+        total_unchanged: totalUnchanged,
+        total_skipped_country: totalSkippedCountry,
+        total_skipped_closed: totalSkippedClosed,
         duration_seconds: durationSeconds,
     });
 
-    return { pagesFetched, totalInserted, totalUpdated, durationSeconds };
+    return {
+        pagesFetched,
+        totalInserted,
+        totalUpdated,
+        totalUnchanged,
+        totalSkippedCountry,
+        totalSkippedClosed,
+        durationSeconds,
+    };
 }
 
 module.exports = { fetchAndSyncStudies, formatStudyToTrialRow };
