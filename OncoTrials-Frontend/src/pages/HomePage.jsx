@@ -75,16 +75,28 @@ function HomePage() {
                         <div className="text-center md:text-left">
 
                             <p className="text-sm font-medium text-blue-600 uppercase tracking-widest">
-                            Clinical Trial Matching Platform
-                        </p>
-
-                            <div className='flex items-center gap-2'> <img src={'/TrialsOnco.png'} alt='OncoTrials Logo' className='h-16 w-16' /> <SplitText text="TrialsOnco" className="text-4xl md:text-5xl font-bold" delay={100} duration={1} ease="power3.out" splitType="chars" from={{ opacity: 0, y: 40 }} to={{ opacity: 1, y: 0 }} threshold={0.1} rootMargin="-100px" textAlign="left" /> </div>
-
-                            <p className="mt-2 text-lg text-gray-600 max-w-xl">
-                                OncoTrials integrates directly into clinical workflows to surface eligible trials using real patient data in real time.
+                                Clinical Trial Matching Platform
                             </p>
 
-                            <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                            <div className='flex items-center gap-2'> <img src={'/TrialsOnco.png'} alt='OncoTrials Logo' className='h-16 w-16' />
+                                <SplitText text="TrialsOnco"
+                                    className="text-4xl md:text-5xl font-bold"
+                                    delay={100}
+                                    duration={1}
+                                    ease="power3.out"
+                                    splitType="chars"
+                                    from={{ opacity: 0, y: 40 }}
+                                    to={{ opacity: 1, y: 0 }}
+                                    threshold={0.1}
+                                    rootMargin="-100px"
+                                    textAlign="left" />
+                            </div>
+
+                            <p className="mt-2 text-lg text-gray-600 max-w-xl">
+                                OncoTrials integrates directly into clinical workflows to search for eligible trials using patient data in real time.
+                            </p>
+
+                            <div className="mt-4 flex flex-row gap-3 justify-center md:justify-start">
                                 <GetStartedDropdown
                                     label="Login"
                                     menuItems={LoginDropdownItems}
@@ -98,63 +110,29 @@ function HomePage() {
                         </div>
 
                         {/* RIGHT */}
-                        <div className="flex justify-center md:justify-end">
-                            <div className="relative w-full max-w-xl">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.90 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 1, delay: 0.2 }}
+                        >
+                            <div className="flex justify-center md:justify-end">
+                                <div className="relative w-full max-w-xl">
 
-                                <div className="absolute inset-0 bg-white rounded-2xl shadow-xl border border-gray-100 transform rotate-1" />
+                                    <div className="absolute inset-0 bg-white rounded-2xl shadow-xl border border-gray-100 transform rotate-2" />
 
-                                <img
-                                    src="/homepage.png"
-                                    alt="OncoTrials dashboard preview"
-                                    className="relative rounded-2xl shadow-2xl border border-gray-200"
-                                />
+                                    <img
+                                        src="/oncology_1.png"
+                                        alt="OncoTrials dashboard preview"
+                                        className="relative rounded-2xl shadow-2xl border border-gray-200"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        </motion.div>
+
                     </div>
                 </div>
 
                 <TrustIndicators />
-
-                {/* <div className='flex flex-col items-center justify-center min-h-full'>
-                    <div className='flex flex-col items-center justify-start space-y-5'>
-                        <h1 className='text-4xl font-bold'>
-                            '[Placeholder]'
-                        </h1>
-                        <h1 className='text-xl text-gray-500'>
-                            Built for Oncologists, by Oncologists
-                        </h1>
-                    </div>
-
-                    <div className='space-y-40'>
-                        <div className='flex flex-col md:flex-row  items-center justify-center gap-20'>
-                            <p className='max-w-md'>
-                                Integration of Molecular Data (NGS, IHC, MSI, etc.)
-                                Match patients based on real-time genomics (e.g., KRAS G12C, HER2 amplification, NTRK fusions).
-                            </p>
-                            <img src={'/vite.svg'} className='flex w-36 h-36' alt='Integration of Molecular Data' />
-
-                        </div>
-
-                        <div className='flex flex-col md:flex-row  items-center justify-center gap-20'>
-                            <img src={'/vite.svg'} className='flex w-36 h-36' alt='Geographic Proximity & Travel Feasibility' />
-                            <p className='max-w-md'>
-                                Geographic Proximity & Travel Feasibility
-                                Incorporate location-aware trial matching, with driving time estimates, travel stipends info, etc.
-                            </p>
-
-
-                        </div>
-
-                        <div className='flex flex-col md:flex-row  items-center justify-center gap-20'>
-                            <p className='max-w-md'>
-                                Community Site Matching
-                                Help non-academic sites refer patients quickly to nearby academic or industry-sponsored trials, enhancing trial access and accrual.
-                            </p>
-                            <img src={'/vite.svg'} className='flex w-36 h-36' alt='Community Site Matching' />
-
-                        </div>
-                    </div>
-                </div> */}
 
                 <PageFooter />
 

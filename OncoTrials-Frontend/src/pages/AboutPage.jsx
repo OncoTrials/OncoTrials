@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import FormButton from "../components/buttons/FormButton.jsx"
 import HomeNavBar from "../components/layout/HomeNavBar.jsx";
+import PageFooter from "../components/layout/PageFooter.jsx";
 
 export default function AboutOncoTrials() {
     return (
@@ -9,7 +10,7 @@ export default function AboutOncoTrials() {
         <div className=" animate-fade-down min-h-screen bg-gradient-to-tl from-blue-100 via-white to-indigo-100 text-gray-900">
              <HomeNavBar/>
             {/* Hero */}
-            <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white px-6 md:px-16 py-20">
+            <div className="bg-gradient-to-br from-cyan-500 to-blue-800 text-white px-6 md:px-16 py-20">
                 <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 items-center">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -24,14 +25,14 @@ export default function AboutOncoTrials() {
                             TrialsOnco helps oncologists find the right clinical trials for
                             their patients—instantly and within their normal workflow.
                         </p>
-                        <div className="flex gap-4">
+                        {/* <div className="flex gap-4">
                             <FormButton text={'Request Demo'}  className="bg-white text-blue-700 hover:bg-gray-100">
                                 Request Demo
                             </FormButton>
                             <FormButton variant="outline" text={'Request Demo'} className="border-white text-white hover:bg-white/10">
                                 Learn More
                             </FormButton>
-                        </div>
+                        </div> */}
                     </motion.div>
 
                     {/* Placeholder Visual */}
@@ -42,7 +43,7 @@ export default function AboutOncoTrials() {
                         className="bg-white/10 backdrop-blur rounded-2xl p-6 shadow-xl"
                     >
                         <div className="h-64 rounded-xl bg-white/20 flex items-center justify-center text-sm text-blue-100">
-                            Product Preview
+                            <img src={"/preview.png"}/>
                         </div>
                     </motion.div>
                 </div>
@@ -153,7 +154,7 @@ export default function AboutOncoTrials() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="bg-blue-50 border border-blue-100 rounded-2xl p-6 md:p-8 space-y-4"
+                        className="bg-white border border-blue-100 rounded-2xl p-6 md:p-8 space-y-4"
                     >
                         <h2 className="text-2xl font-semibold">Why It Matters</h2>
                         <p className="text-gray-700 leading-relaxed">
@@ -189,7 +190,7 @@ export default function AboutOncoTrials() {
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-8 text-center space-y-4 shadow-lg"
+                        className="bg-gradient-to-r from-cyan-500 to-blue-800 text-white rounded-2xl p-8 text-center space-y-4 shadow-lg"
                     >
                         <h2 className="text-2xl font-semibold">
                             Bring Clinical Trials Into Every Decision
@@ -204,6 +205,7 @@ export default function AboutOncoTrials() {
                     </motion.div>
                 </div>
             </div>
+            <PageFooter/>
         </div>
     );
 }
