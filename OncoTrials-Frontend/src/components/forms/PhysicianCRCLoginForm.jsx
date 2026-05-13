@@ -6,6 +6,7 @@ import supabase from '../../utils/SupabaseClient';
 import CustomAlert from '../common/Alert';
 import { useNavigate } from 'react-router-dom';
 import { Turnstile } from "@marsidev/react-turnstile";
+import PageFooter from '../layout/PageFooter';
 
 
 const loginUser = async ({ email, password, captchaToken }) => {
@@ -126,6 +127,7 @@ function PhysicianCRCLoginForm() {
                     <img src={'/medical-tech-1.png'} alt="Workspace Illustration" className='ml-10 h-[400px] mt-10 hidden md:block' />
                 </div>
             </div>
+            <PageFooter/>
         </>
     )
 }
