@@ -72,7 +72,7 @@ function PhysicianCRCLoginForm() {
                                         value={email}
                                         disabled={loginUserMutation.isPending}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="jmensah123@example.com"
+                                        placeholder="john.doe@uchicago.edu"
                                         required />
                                 </div>
                                 <div className=" relative space-y-2">

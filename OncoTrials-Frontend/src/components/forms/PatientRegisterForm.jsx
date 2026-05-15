@@ -123,7 +123,7 @@ const PatientRegisterForm = () => {
                                 name='email'
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="jmensah123@example.com"
+                                placeholder="john.doe@uchicago.edu"
                                 disabled={signUpMutation.isPending}
                                 required
                             />
