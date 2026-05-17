@@ -19,11 +19,15 @@ const getUserMetadata = async () => {
 const getAllTrials = async () => {
   const { data, error } = await supabase
     .from('trials')
-    .select('*');
+    .select('*')
+    .range(0,2000)
+    ;
 
   if (error) throw error;
   return data;
 }
+
+
 
 
 
@@ -43,9 +47,12 @@ function PatientDashboard() {
     queryKey: ['getAllTrials'],
     queryFn: getAllTrials,
     staleTime: 5 * 60 * 1000,
-    retry: false,
+    retry: true,
+    failureCount: 3,
     refetchOnWindowFocus: false,
   });
+
+  console.log(trials);
 
   const [filteredTrials, setFilteredTrials] = useState([]);
   const displayedTrials = filteredTrials ?? trials;
