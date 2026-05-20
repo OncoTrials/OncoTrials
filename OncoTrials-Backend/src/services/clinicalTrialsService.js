@@ -66,18 +66,13 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
             const existing = existingByNct.get(row.nct_id);
 
             if (existing) {
-                // Update path
-                const { payload, hasChange } = buildUpdatePayload(row, existing);
+                const { hasChange } = buildUpdatePayload(row, existing);
 
                 if (hasChange) {
-                    batchToUpsert.push(row); // Use full row for upsert
+                    batchToUpsert.push(row);
                     totalUpdated++;
                 } else {
-                    // Still bump last_fetched_at in DB
-                    batchToUpsert.push({
-                        ...existing, // Start with existing data
-                        last_fetched_at: row.last_fetched_at 
-                    });
+                    // Skip DB write entirely — nothing to update
                     totalUnchanged++;
                 }
             } else {
@@ -91,7 +86,7 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
             }
         }
 
-        // Batch Upsert for the entire page
+        // Upsert only new/changed trials
         if (batchToUpsert.length > 0) {
             const upsertResult = await upsertRowsAndSetCreator(batchToUpsert);
             if (upsertResult.error) {
@@ -99,13 +94,11 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
                     "Batch upsert failed; falling back to individual updates (slow):",
                     upsertResult.error
                 );
-                // Fallback for safety (though batch upsert is preferred)
                 for (const row of batchToUpsert) {
                     await upsertRowsAndSetCreator([row]);
                 }
             }
-            
-            // Update local cache
+
             for (const r of batchToUpsert) {
                 if (r.nct_id) existingByNct.set(r.nct_id, r);
             }

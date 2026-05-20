@@ -53,7 +53,6 @@ async function getLastSuccessfulImportDate() {
     }
 }
 
-// Fixed: Upsert with .select() to get reliable data back
 async function upsertRowsAndSetCreator(rows) {
     if (!rows || rows.length === 0) return { upsertedCount: 0 };
 
@@ -67,7 +66,7 @@ async function upsertRowsAndSetCreator(rows) {
         const { data, error } = await supabase
             .from("trials")
             .upsert(rowsForUpsert, { onConflict: "nct_id" })
-            .select(); // Fix #1: This ensures reliable data return
+            .select("nct_id"); // only fetch nct_id; full rows could cause large egress
 
         if (error) return { error };
 
@@ -94,7 +93,6 @@ async function upsertRowsAndSetCreator(rows) {
     }
 }
 
-// Fixed: Better error handling in fallback
 async function fallbackBatchInsertWithRetries(rows) {
     if (!rows || rows.length === 0) return { insertedCount: 0 };
     let totalInserted = 0;
@@ -115,10 +113,9 @@ async function fallbackBatchInsertWithRetries(rows) {
                 const { data, error } = await supabase
                     .from("trials")
                     .insert(batchWithCreator)
-                    .select(); // Add .select() for consistency
+                    .select("nct_id"); // only fetch nct_id — full rows cause large egress
 
                 if (error) {
-                    // Fix #2: Handle unique constraint violations properly
                     if (error.code === '23505') {
                         console.warn(`Unique constraint violation for batch, skipping:`, error.message);
                         success = true;
@@ -179,7 +176,7 @@ async function logImportJob(jobData) {
     }
 }
 
-module.exports = { 
+module.exports = {
     loadExistingTrials,
     getLastSuccessfulImportDate,
     upsertRowsAndSetCreator,
