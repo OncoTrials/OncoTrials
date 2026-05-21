@@ -32,7 +32,8 @@ function PhysicianDashboard() {
     });
 
 
-    const [filteredTrials, setFilteredTrials] = useState([]);
+    // null = no search performed yet; [] = search returned no results; [...] = results
+    const [filteredTrials, setFilteredTrials] = useState(null);
 
 
     return (
@@ -63,7 +64,11 @@ function PhysicianDashboard() {
   
           {/* Results */}
           <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
-            <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []} />
+            <TrialCards
+              trials={filteredTrials}
+              isLoading={trialsLoading}
+              onShowAll={() => setFilteredTrials(trials ?? [])}
+            />
           </div>
         </div>
         <PageFooter/>

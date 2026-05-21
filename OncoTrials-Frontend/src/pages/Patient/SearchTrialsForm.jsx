@@ -46,6 +46,7 @@ function SearchTrialsForm({ trials, onFilter }) {
     // ── Filter logic ──────────────────────────────────────────────────────────
     const handleSearch = () => {
         if (!validate()) return
+        if (!trials?.length) return // trials not loaded yet
 
         const patient = buildPatientObject()
         const numAge = age ? Number(age) : null

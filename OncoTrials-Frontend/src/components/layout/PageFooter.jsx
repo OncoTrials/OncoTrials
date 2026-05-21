@@ -1,6 +1,7 @@
 
 import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLink, FooterLinkGroup } from "flowbite-react";
 
+const currentYear = new Date().getFullYear();
 function PageFooter() {
     return (
         <Footer container className="mt-10 !bg-transparent">
@@ -20,7 +21,7 @@ function PageFooter() {
                     </FooterLinkGroup>
                 </div>
                 <FooterDivider />
-                <FooterCopyright href="/" by="TrialsOnco™" year={2025} />
+                <FooterCopyright href="/" by="TrialsOnco™" year={currentYear} />
             </div>
         </Footer>
     );

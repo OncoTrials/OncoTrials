@@ -36,8 +36,8 @@ function PatientDashboard() {
     refetchOnWindowFocus: false,
   });
 
-  const [filteredTrials, setFilteredTrials] = useState([]);
-  const displayedTrials = filteredTrials ?? trials;
+  // null = no search performed yet; [] = search returned no results; [...] = results
+  const [filteredTrials, setFilteredTrials] = useState(null);
 
   return (
     <>
@@ -67,7 +67,11 @@ function PatientDashboard() {
 
         {/* Results */}
         <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
-          <TrialCards trials={displayedTrials} />
+          <TrialCards
+            trials={filteredTrials}
+            isLoading={trialsLoading}
+            onShowAll={() => setFilteredTrials(trials ?? [])}
+          />
         </div>
       </div>
       <PageFooter/>

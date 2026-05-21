@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
 
-function TrialCards({ trials }) {
+function TrialCards({ trials, isLoading, onShowAll }) {
     const [modalData, setModalData] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedLocation, setSelectedLocation] = useState(
@@ -117,10 +117,44 @@ function TrialCards({ trials }) {
         );
     };
 
-    if (!trials || trials?.length === 0) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[750px]">
-                <p className="text-lg text-gray-500">No trials found. Please adjust your search criteria.</p>
+                <p className="text-lg text-gray-400 animate-pulse">Loading trials…</p>
+            </div>
+        );
+    }
+
+    // No search performed yet — prompt the user
+    if (trials === null) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[750px] gap-6 text-center px-8">
+                <div className="flex flex-col gap-3 max-w-md">
+                    <h2 className="text-xl font-semibold text-gray-700">Find a Clinical Trial</h2>
+                    <p className="text-gray-500 leading-relaxed">
+                        Enter your cancer type and clinical details in the search form to receive
+                        a personalized list of trials matched to your profile.
+                    </p>
+                    <p className="text-sm text-gray-400">
+                        Prefer to explore first? Browse the full catalogue below.
+                    </p>
+                </div>
+                <button
+                    onClick={onShowAll}
+                    className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl transition-colors duration-200 cursor-pointer"
+                >
+                    Browse All Trials
+                </button>
+            </div>
+        );
+    }
+
+    // Search was performed but returned no matches
+    if (trials.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[750px] gap-3 text-center px-8">
+                <p className="text-lg text-gray-500">No trials matched your search criteria.</p>
+                <p className="text-sm text-gray-400">Try broadening your filters or adjusting the cancer type.</p>
             </div>
         );
     }
