@@ -5,21 +5,11 @@ import supabase from '../../utils/SupabaseClient'
 import SearchTrialsForm from '../Patient/SearchTrialsForm'
 import TrialCards from '../Patient/TrialCards'
 import PageFooter from '../../components/layout/PageFooter.jsx'
+import { getAllTrials } from '../../api/trialsApi'
 
 const getUserMetadata = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-
-
     return user?.user_metadata || null;
-}
-
-const getAllTrials = async () => {
-    const { data, error } = await supabase
-        .from('trials')
-        .select('*');
-
-    if (error) throw error;
-    return data;
 }
 
 function PhysicianDashboard() {

@@ -1,16 +1,55 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../db/supabaseClient');
-// const verifyUser = require('../middleware/verifyUser');
 
-// GET /trials - list all trials
-router.get('/', async (req, res) =>{
-    const { data, error } = await supabase.from('trials').select('*');
+// Columns returned for list views — heavy text fields are excluded to reduce egress
+const LIST_COLUMNS = [
+    'id', 'nct_id', 'title', 'status', 'sponsor',
+    'summary', 'conditions', 'sex', 'minimum_age',
+    'location_city', 'location_state', 'location_country',
+    'latitude', 'longitude', 'start_date', 'primary_completion_date',
+    'biomarker_criteria',
+].join(', ');
+
+// Simple in-memory cache with TTL — avoids re-querying Supabase on every page load
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const cache = new Map();
+
+function getCached(key) {
+    const entry = cache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) { cache.delete(key); return null; }
+    return entry.data;
+}
+
+function setCached(key, data) {
+    cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+// GET /trials?page=1&limit=20
+router.get('/', async (req, res) => {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 5000); // cap at 5000
+    const page  = Math.max(parseInt(req.query.page)  || 1,  1);
+    const offset = (page - 1) * limit;
+
+    const cacheKey = `trials:${page}:${limit}`;
+    const cached = getCached(cacheKey);
+    if (cached) return res.json(cached);
+
+    const { data, error, count } = await supabase
+        .from('trials')
+        .select(LIST_COLUMNS, { count: 'exact' })
+        .range(offset, offset + limit - 1)
+        .order('start_date', { ascending: false });
+
     if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
+
+    const payload = { data, total: count, page, limit };
+    setCached(cacheKey, payload);
+    res.json(payload);
 });
 
-// GET /trials/:id - get trial by ID
+// GET /trials/:id — full row for the detail page
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase
@@ -23,22 +62,12 @@ router.get('/:id', async (req, res) => {
     res.json(data);
 });
 
-
 // POST /trials - create a new trial
 router.post('/', async (req, res) => {
     const user = req.user;
     const { data: { supabaseUser } } = await supabase.auth.getUser()
     console.log('req body:', req.body);
     console.log('supabaseUser:', supabaseUser);
-
-    // Optionally restrict to CRC role
-    // if (user.role !== 'CRC') {
-    //     return res.status(403).json({ error: 'Forbidden: Only CRCs can create trials' });
-    // }
-
-    // if (!user?.sub) {
-    //     return res.status(400).json({ error: 'Invalid user token: missing sub' });
-    // }
 
     const { metadata, eligibilityCriteria } = req.body;
 
@@ -50,49 +79,22 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Missing or invalid eligibilityCriteria in request body' });
     }
 
-    // Extract relevant fields
     const {
-        nct_id,
-        title,
-        summary,
-        phase,
-        condition,
-        status,
-        sponsor,
-        location_city,
-        location_state,
-        location_country,
-        latitude,
-        longitude,
-        biomarker_criteria,
-        source = 'manual'
+        nct_id, title, summary, phase, condition, status, sponsor,
+        location_city, location_state, location_country,
+        latitude, longitude, biomarker_criteria, source = 'manual'
     } = metadata;
 
-    // Required fields
     if (!title || typeof title !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid title' });
     }
 
     const trialData = {
-        nct_id,
-        title,
-        summary,
-        phase,
-        condition,
-        status,
-        sponsor,
+        nct_id, title, summary, phase, condition, status, sponsor,
         eligibility_criteria: eligibilityCriteria,
-        location_city,
-        location_state,
-        location_country,
-        latitude,
-        longitude,
-        biomarker_criteria,
-        source,
+        location_city, location_state, location_country,
+        latitude, longitude, biomarker_criteria, source,
     };
-
-    console.log('trialData payload:', trialData);
-
 
     try {
         const { data, error } = await supabase

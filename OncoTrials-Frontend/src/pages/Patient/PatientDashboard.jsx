@@ -7,22 +7,11 @@ import TrialCards from './TrialCards'
 import SearchTrialsForm from './SearchTrialsForm'
 import HomeNavBar from '../../components/layout/HomeNavBar'
 import PageFooter from '../../components/layout/PageFooter'
-
+import { getAllTrials } from '../../api/trialsApi'
 
 const getUserMetadata = async () => {
   const { data: { user } } = await supabase.auth.getUser();
-
-
   return user?.user_metadata || null;
-}
-
-const getAllTrials = async () => {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('*');
-
-  if (error) throw error;
-  return data;
 }
 
 
