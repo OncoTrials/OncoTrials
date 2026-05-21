@@ -10,12 +10,7 @@ export default function ContactPage() {
         <section className="relative z-10 px-6 py-24 md:px-12 lg:px-20">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left Content */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-100 bg-blue-50 text-blue-700 text-sm font-medium mb-6">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                Contact OncoTrials
-              </div>
-  
+            <div className="">  
               <h1 className="text-5xl md:text-6xl font-bold leading-tight tracking-tight">
                 Let’s Improve
                 <span className="block bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
@@ -24,7 +19,7 @@ export default function ContactPage() {
               </h1>
   
               <p className="mt-6 text-lg text-gray-600 max-w-xl leading-relaxed">
-                Whether you're an oncologist, researcher, hospital administrator, or potential partner, we’d love to hear from you. Reach out to learn how OncoTrials can streamline patient-to-trial matching directly within clinical workflows.
+                Whether you're an oncologist, researcher, hospital administrator, or potential partner, we’d love to hear from you. Reach out to learn how TrialsOnco can streamline patient-to-trial matching directly within clinical workflows.
               </p>
   
               <div className="mt-10 space-y-5">
@@ -48,7 +43,7 @@ export default function ContactPage() {
   
                   <div>
                     <p className="font-semibold text-lg">Email</p>
-                    <p className="text-gray-600">contact@oncotrials.com</p>
+                    <p className="text-gray-600">trialsonco@trialsonco.com</p>
                   </div>
                 </div>
   
@@ -72,7 +67,7 @@ export default function ContactPage() {
   
                   <div>
                     <p className="font-semibold text-lg">Schedule a Demo</p>
-                    <p className="text-gray-600">See how OncoTrials integrates into oncology workflows.</p>
+                    <p className="text-gray-600">See how TrialsOnco integrates into oncology workflows.</p>
                   </div>
                 </div>
   
@@ -99,7 +94,7 @@ export default function ContactPage() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Jeremiah"
+                        placeholder="First Name"
                         className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
                       />
                     </div>
@@ -110,7 +105,7 @@ export default function ContactPage() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Smith"
+                        placeholder="Last Name"
                         className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
                       />
                     </div>
@@ -118,11 +113,11 @@ export default function ContactPage() {
   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Work Email
+                      Email
                     </label>
                     <input
                       type="email"
-                      placeholder="you@hospital.org"
+                      placeholder="john.doe@email.com"
                       className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
                     />
                   </div>
@@ -133,7 +128,7 @@ export default function ContactPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Cancer Center / Hospital / Company"
+                      placeholder="Cancer Center / Hospital / Company (optional)"
                       className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
                     />
                   </div>
@@ -151,10 +146,10 @@ export default function ContactPage() {
   
                   <button
                     type="submit"
-                    className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.01] hover:shadow-blue-200"
+                    className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-6 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-[1.01] hover:shadow-blue-200 cursor-pointer"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
-                      Contact OncoTrials
+                      Contact TrialsOnco
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
