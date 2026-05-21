@@ -23,7 +23,7 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    const { data: trials = [] } = useQuery({
+    const { data: trials = [], isLoading: trialsLoading } = useQuery({
         queryKey: ['getAllTrials'],
         queryFn: getAllTrials,
         staleTime: 5 * 60 * 1000,
