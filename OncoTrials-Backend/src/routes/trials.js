@@ -5,10 +5,10 @@ const supabase = require('../db/supabaseClient');
 // Columns returned for list views — heavy text fields are excluded to reduce egress
 const LIST_COLUMNS = [
     'id', 'nct_id', 'title', 'status', 'sponsor',
-    'summary', 'conditions', 'sex', 'minimum_age',
+    'summary', 'conditions', 'sex', 'minimum_age', 'maximum_age',
     'location_city', 'location_state', 'location_country',
     'latitude', 'longitude', 'start_date', 'primary_completion_date',
-    'biomarker_criteria',
+    'completion_date', 'eligibility_criteria_summary', 'biomarker_criteria',
 ].join(', ');
 
 // Simple in-memory cache with TTL — avoids re-querying Supabase on every page load

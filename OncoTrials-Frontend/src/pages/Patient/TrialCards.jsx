@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
+import { getTrialById } from '../../api/trialsApi';
 
-function TrialCards({ trials, isLoading, onShowAll }) {
-    const [modalData, setModalData] = useState(null);
+function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry }) {
+    const [modalData, setModalData] = useState(null);       // partial data (list columns)
+    const [fullModalData, setFullModalData] = useState(null); // full data (detail fetch)
+    const [modalDetailLoading, setModalDetailLoading] = useState(false);
+    const [retrying, setRetrying] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedLocation, setSelectedLocation] = useState(
-        modalData?.locations?.[0] ?? null
-    );
+    const [selectedLocation, setSelectedLocation] = useState(null);
 
     const trialsPerPage = 12;
     const totalPages = Math.ceil((trials?.length ?? 0) / trialsPerPage);
@@ -15,6 +17,41 @@ function TrialCards({ trials, isLoading, onShowAll }) {
 
     const handlePreviousPage = () => { if (currentPage > 1) setCurrentPage(currentPage - 1); };
     const handleNextPage    = () => { if (currentPage < totalPages) setCurrentPage(currentPage + 1); };
+
+    const handleRetry = async () => {
+        if (!onRetry) return;
+        setRetrying(true);
+        try { await onRetry(); } finally { setRetrying(false); }
+    };
+
+    // Fetch full trial detail when modal opens
+    useEffect(() => {
+        if (!modalData?.id) return;
+        setModalDetailLoading(true);
+        setFullModalData(null);
+        setSelectedLocation(null);
+        getTrialById(modalData.id)
+            .then(data => {
+                setFullModalData(data);
+                setSelectedLocation(data.locations?.[0] ?? null);
+            })
+            .catch(() => setFullModalData(modalData)) // fallback to partial data
+            .finally(() => setModalDetailLoading(false));
+    }, [modalData?.id]);
+
+    const openModal = (trial) => {
+        setModalData(trial);
+        setFullModalData(null);
+        setSelectedLocation(null);
+    };
+    const closeModal = () => {
+        setModalData(null);
+        setFullModalData(null);
+        setSelectedLocation(null);
+    };
+
+    // displayData merges full (when ready) over partial
+    const displayData = fullModalData ?? modalData;
 
     const convertStatus = (status) => {
         if (!status) return 'Unavailable';
@@ -54,14 +91,12 @@ function TrialCards({ trials, isLoading, onShowAll }) {
         return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     };
 
-    const openModal  = (trial) => setModalData(trial);
-    const closeModal = () => setModalData(null);
-
     const cleanEligibilitySummary = (summary) => {
         if (!summary) return '';
         return summary.replace(/##\s*/g, '').trim();
     };
 
+    // Loading state
     if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[750px]">
@@ -70,8 +105,32 @@ function TrialCards({ trials, isLoading, onShowAll }) {
         );
     }
 
-    // No search performed yet — show instructional prompt
+    // No search performed yet — show error or instructional prompt
     if (trials === null) {
+        if (trialsError) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[750px] gap-4 text-center px-8">
+                    <div className="flex flex-col gap-2 max-w-sm">
+                        <p className="text-lg font-semibold text-red-600">Failed to load trials</p>
+                        <p className="text-sm text-gray-500">Something went wrong while fetching trial data. Please try again.</p>
+                    </div>
+                    <button
+                        onClick={handleRetry}
+                        disabled={retrying}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors duration-200 cursor-pointer shadow-sm"
+                    >
+                        {retrying && (
+                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            </svg>
+                        )}
+                        {retrying ? 'Retrying…' : 'Try Again'}
+                    </button>
+                </div>
+            );
+        }
+
         return (
             <div className="flex flex-col items-center justify-center min-h-[750px] gap-8 px-8 py-12">
                 <div className="flex flex-col gap-2 text-center max-w-lg">
@@ -103,11 +162,10 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                     </div>
 
                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex flex-col gap-1.5">
-                        <span className="font-semibold text-amber-800">Age Range</span>
+                        <span className="font-semibold text-amber-800">Line of Treatment</span>
                         <p className="text-amber-700 leading-relaxed">
-                            Enter your age or an age range to filter for trials with matching
-                            eligibility windows. Trials with no published age limit will always
-                            be included.
+                            Specify whether you are seeking a first-line, second-line, or later-line
+                            treatment option. Trials often restrict enrollment by prior therapy count.
                         </p>
                     </div>
 
@@ -124,7 +182,7 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                     <p className="text-sm text-gray-400">Prefer to explore without filtering?</p>
                     <button
                         onClick={onShowAll}
-                        className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-xl transition-colors duration-200 cursor-pointer shadow-sm"
+                        className="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-semibold rounded-xl transition-all duration-150 cursor-pointer shadow-sm"
                     >
                         Browse All Trials
                     </button>
@@ -253,7 +311,7 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                                 {modalData.title}
                             </h2>
 
-                            {/* Overview grid */}
+                            {/* Overview grid — uses modalData (always available immediately) */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                     <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Status</span>
@@ -280,7 +338,7 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                                         <span className="text-sm text-gray-800 font-medium">{modalData.start_date}</span>
                                     </div>
                                 )}
-                                {modalData.start_date && (
+                                {modalData.primary_completion_date && (
                                     <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Primary Completion</span>
                                         <span className="text-sm text-gray-800 font-medium">{modalData.primary_completion_date}</span>
@@ -294,7 +352,7 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                                 )}
                             </div>
 
-                            {/* Conditions */}
+                            {/* Conditions — available from list columns */}
                             {modalData.conditions?.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <span className="text-sm font-medium text-gray-500">Conditions</span>
@@ -306,20 +364,26 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                                 </div>
                             )}
 
-                            {modalData.study_description && (
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-sm font-medium text-gray-500">Study Description</span>
+                            {/* Study Description — heavy field, show skeleton until fullModalData arrives */}
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm font-medium text-gray-500">Study Description</span>
+                                {modalDetailLoading ? (
+                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                ) : displayData?.study_description ? (
                                     <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
-                                        {modalData.study_description}
+                                        {displayData.study_description}
                                     </p>
-                                </div>
-                            )}
+                                ) : null}
+                            </div>
 
-                            {modalData.eligibility_criteria_summary && (
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-sm font-medium text-gray-500">Eligibility Criteria Summary</span>
+                            {/* Eligibility Criteria Summary — heavy field, show skeleton while loading */}
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium text-gray-500">Eligibility Criteria Summary</span>
+                                {modalDetailLoading ? (
+                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                ) : displayData?.eligibility_criteria_summary ? (
                                     <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-40 overflow-y-auto space-y-3">
-                                        {modalData.eligibility_criteria_summary
+                                        {displayData.eligibility_criteria_summary
                                             .split('##')
                                             .filter(Boolean)
                                             .map((section, index) => {
@@ -336,46 +400,53 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                                                 );
                                             })}
                                     </div>
-                                </div>
-                            )}
+                                ) : null}
+                            </div>
 
-                            {modalData.eligibility_summary_clinician_json && (
-                                <div className="flex flex-col gap-3">
-                                    <span className="text-sm font-medium text-gray-500">Eligibility Criteria</span>
+                            {/* Eligibility Criteria (structured) — heavy field, show skeleton while loading */}
+                            <div className="flex flex-col gap-3">
+                                <span className="text-sm font-medium text-gray-500">Eligibility Criteria</span>
+                                {modalDetailLoading ? (
+                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                ) : displayData?.eligibility_summary_clinician_json ? (
                                     <div className="bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto space-y-4 text-sm text-gray-700">
-                                        {modalData.eligibility_summary_clinician_json.inclusion_criteria?.length > 0 && (
+                                        {displayData.eligibility_summary_clinician_json.inclusion_criteria?.length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-green-700 mb-1">Inclusion Criteria</h4>
                                                 <ul className="list-disc pl-5 space-y-1">
-                                                    {modalData.eligibility_summary_clinician_json.inclusion_criteria.map((item, index) => (
+                                                    {displayData.eligibility_summary_clinician_json.inclusion_criteria.map((item, index) => (
                                                         <li key={index}>{item}</li>
                                                     ))}
                                                 </ul>
                                             </div>
                                         )}
-                                        {modalData.eligibility_summary_clinician_json.exclusion_criteria?.length > 0 && (
+                                        {displayData.eligibility_summary_clinician_json.exclusion_criteria?.length > 0 && (
                                             <div>
                                                 <h4 className="font-semibold text-red-700 mb-1">Exclusion Criteria</h4>
                                                 <ul className="list-disc pl-5 space-y-1">
-                                                    {modalData.eligibility_summary_clinician_json.exclusion_criteria.map((item, index) => (
+                                                    {displayData.eligibility_summary_clinician_json.exclusion_criteria.map((item, index) => (
                                                         <li key={index}>{item}</li>
                                                     ))}
                                                 </ul>
                                             </div>
                                         )}
                                     </div>
-                                </div>
-                            )}
+                                ) : null}
+                            </div>
 
-                            {/* Locations */}
-                            {modalData.locations?.length > 0 && (
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-sm font-medium text-gray-500">
-                                        Locations <span className="text-gray-400 font-normal">({modalData.locations.length})</span>
-                                    </span>
+                            {/* Locations — heavy field, show skeleton while loading */}
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium text-gray-500">
+                                    {!modalDetailLoading && displayData?.locations?.length > 0
+                                        ? <>Locations <span className="text-gray-400 font-normal">({displayData.locations.length})</span></>
+                                        : 'Locations'}
+                                </span>
+                                {modalDetailLoading ? (
+                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                ) : displayData?.locations?.length > 0 ? (
                                     <div className="flex flex-col gap-2">
                                         <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
-                                            {modalData.locations.map((loc, i) => (
+                                            {displayData.locations.map((loc, i) => (
                                                 <div
                                                     key={i}
                                                     onClick={() => setSelectedLocation(loc)}
@@ -416,14 +487,14 @@ function TrialCards({ trials, isLoading, onShowAll }) {
                                                         src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_API_KEY}&q=${query}`}
                                                     />
                                                     <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
-                                                        📍 {selectedLocation.facility} — {[selectedLocation.city, selectedLocation.state, selectedLocation.country].filter(Boolean).join(', ')}
+                                                        {selectedLocation.facility} — {[selectedLocation.city, selectedLocation.state, selectedLocation.country].filter(Boolean).join(', ')}
                                                     </div>
                                                 </div>
                                             );
                                         })()}
                                     </div>
-                                </div>
-                            )}
+                                ) : null}
+                            </div>
                         </div>
 
                         {/* Sticky footer */}

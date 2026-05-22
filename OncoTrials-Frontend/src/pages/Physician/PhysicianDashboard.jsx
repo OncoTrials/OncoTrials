@@ -23,11 +23,11 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    const { data: trials = [], isLoading: trialsLoading } = useQuery({
+    const { data: trials, isLoading: trialsLoading, isError: trialsError, refetch: refetchTrials } = useQuery({
         queryKey: ['getAllTrials'],
         queryFn: getAllTrials,
         staleTime: 5 * 60 * 1000,
-        retry: false,
+        retry: 2,
         refetchOnWindowFocus: false,
     });
 
@@ -67,7 +67,9 @@ function PhysicianDashboard() {
             <TrialCards
               trials={filteredTrials}
               isLoading={trialsLoading}
-              onShowAll={() => setFilteredTrials(trials ?? [])}
+              trialsError={trialsError}
+              onShowAll={() => setFilteredTrials(trials || null)}
+              onRetry={refetchTrials}
             />
           </div>
         </div>
