@@ -9,6 +9,12 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
     const [retrying, setRetrying] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedLocation, setSelectedLocation] = useState(null);
+    const [pageInput, setPageInput] = useState('1');
+
+    // Sync input with actual page when page changes via Next/Prev buttons
+    useEffect(() => {
+        setPageInput(currentPage.toString());
+    }, [currentPage]);
 
     const trialsPerPage = 12;
     const totalPages = Math.ceil((trials?.length ?? 0) / trialsPerPage);
@@ -232,8 +238,8 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
 
                             {/* Snippet */}
                             <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
-                                {cleanEligibilitySummary(trial?.eligibility_criteria_summary?.slice(0, 140))}
-                                {trial?.eligibility_criteria_summary?.length > 140 ? '…' : ''}
+                                {cleanEligibilitySummary((trial?.eligibility_criteria_summary || trial?.summary)?.slice(0, 140))}
+                                {(trial?.eligibility_criteria_summary || trial?.summary)?.length > 140 ? '…' : ''}
                             </p>
 
                             {/* Footer */}
@@ -269,9 +275,48 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                     <span className="hidden sm:inline">Previous</span>
                 </button>
 
-                <span className="text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
-                    {paginatedData.length === 0 ? 'No results' : `Page ${currentPage} of ${totalPages}`}
-                </span>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 font-medium whitespace-nowrap">
+                    {paginatedData.length === 0 ? (
+                        <span>No results</span>
+                    ) : (
+                        <>
+                            <span>Page</span>
+                            <input
+                                type="number"
+                                min={1}
+                                max={totalPages}
+                                value={pageInput}
+                                onChange={(e) => setPageInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        let pageNum = parseInt(pageInput, 10);
+                                        if (isNaN(pageNum) || pageNum < 1) {
+                                            pageNum = 1;
+                                            setPageInput('1');
+                                        } else if (pageNum > totalPages) {
+                                            pageNum = totalPages;
+                                            setPageInput(totalPages.toString());
+                                        }
+                                        setCurrentPage(pageNum);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    let pageNum = parseInt(pageInput, 10);
+                                    if (isNaN(pageNum) || pageNum < 1) {
+                                        pageNum = 1;
+                                        setPageInput('1');
+                                    } else if (pageNum > totalPages) {
+                                        pageNum = totalPages;
+                                        setPageInput(totalPages.toString());
+                                    }
+                                    setCurrentPage(pageNum);
+                                }}
+                                className="w-12 sm:w-16 px-1 py-1 text-center border border-gray-200 rounded-lg text-gray-700 focus:ring-2 focus:ring-sky-100 focus:border-sky-400 outline-none"
+                            />
+                            <span>of {totalPages}</span>
+                        </>
+                    )}
+                </div>
 
                 <button
                     type="button"
@@ -311,53 +356,53 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                                 {modalData.title}
                             </h2>
 
-                            {/* Overview grid — uses modalData (always available immediately) */}
+                            {/* Overview grid — uses displayData */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                     <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Status</span>
-                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium w-fit ${getStatusColor(modalData.status)}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(modalData.status)}`} />
-                                        {convertStatus(modalData.status)}
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium w-fit ${getStatusColor(displayData?.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(displayData?.status)}`} />
+                                        {convertStatus(displayData?.status)}
                                     </span>
                                 </div>
-                                {modalData.sex && (
+                                {displayData?.sex && (
                                     <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Sex</span>
-                                        <span className="text-sm text-gray-800 font-medium">{modalData.sex}</span>
+                                        <span className="text-sm text-gray-800 font-medium">{displayData.sex}</span>
                                     </div>
                                 )}
-                                {modalData.minimum_age && (
+                                {displayData?.minimum_age && (
                                     <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Minimum Age</span>
-                                        <span className="text-sm text-gray-800 font-medium">{modalData.minimum_age}</span>
+                                        <span className="text-sm text-gray-800 font-medium">{displayData.minimum_age}</span>
                                     </div>
                                 )}
-                                {modalData.start_date && (
+                                {displayData?.start_date && (
                                     <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Start Date</span>
-                                        <span className="text-sm text-gray-800 font-medium">{modalData.start_date}</span>
+                                        <span className="text-sm text-gray-800 font-medium">{displayData.start_date}</span>
                                     </div>
                                 )}
-                                {modalData.primary_completion_date && (
+                                {displayData?.primary_completion_date && (
                                     <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
-                                        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Primary Completion</span>
-                                        <span className="text-sm text-gray-800 font-medium">{modalData.primary_completion_date}</span>
+                                        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Primary Completion Date</span>
+                                        <span className="text-sm text-gray-800 font-medium">{displayData.primary_completion_date}</span>
                                     </div>
                                 )}
-                                {modalData.completion_date && (
+                                {displayData?.completion_date && (
                                     <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-1">
                                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Completion Date</span>
-                                        <span className="text-sm text-gray-800 font-medium">{modalData.completion_date}</span>
+                                        <span className="text-sm text-gray-800 font-medium">{displayData.completion_date}</span>
                                     </div>
                                 )}
                             </div>
 
                             {/* Conditions — available from list columns */}
-                            {modalData.conditions?.length > 0 && (
+                            {displayData?.conditions?.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <span className="text-sm font-medium text-gray-500">Conditions</span>
                                     <div className="flex flex-wrap gap-2">
-                                        {modalData.conditions.map((c, i) => (
+                                        {displayData.conditions.map((c, i) => (
                                             <span key={i} className="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-100 rounded-lg text-xs font-medium">{c}</span>
                                         ))}
                                     </div>
@@ -365,50 +410,55 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                             )}
 
                             {/* Study Description — heavy field, show skeleton until fullModalData arrives */}
-                            <div className="flex flex-col gap-1">
-                                <span className="text-sm font-medium text-gray-500">Study Description</span>
-                                {modalDetailLoading ? (
-                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
-                                ) : displayData?.study_description ? (
-                                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
-                                        {displayData.study_description}
-                                    </p>
-                                ) : null}
-                            </div>
+                            {(modalDetailLoading || displayData?.study_description) ? (
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-sm font-medium text-gray-500">Study Description</span>
+                                    {modalDetailLoading ? (
+                                        <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                    ) : (
+                                        <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
+                                            {displayData.study_description}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : null}
 
-                            {/* Eligibility Criteria Summary — heavy field, show skeleton while loading */}
-                            <div className="flex flex-col gap-2">
-                                <span className="text-sm font-medium text-gray-500">Eligibility Criteria Summary</span>
-                                {modalDetailLoading ? (
-                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
-                                ) : displayData?.eligibility_criteria_summary ? (
-                                    <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-40 overflow-y-auto space-y-3">
-                                        {displayData.eligibility_criteria_summary
-                                            .split('##')
-                                            .filter(Boolean)
-                                            .map((section, index) => {
-                                                const [title, ...lines] = section.trim().split('\n');
-                                                return (
-                                                    <div key={index}>
-                                                        <h4 className="font-semibold text-gray-900 mb-1">{title.replace(/-/g, '').trim()}</h4>
-                                                        <ul className="list-disc pl-5 space-y-1">
-                                                            {lines.filter(line => line.trim().startsWith('-')).map((line, i) => (
-                                                                <li key={i}>{line.replace('-', '').trim()}</li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                );
-                                            })}
-                                    </div>
-                                ) : null}
-                            </div>
+                            {/* Eligibility Criteria Summary — only render when loading or data present */}
+                            {(modalDetailLoading || displayData?.eligibility_criteria_summary) && (
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-sm font-medium text-gray-500">Eligibility Criteria Summary</span>
+                                    {modalDetailLoading ? (
+                                        <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                    ) : (
+                                        <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-40 overflow-y-auto space-y-3">
+                                            {displayData.eligibility_criteria_summary
+                                                .split('##')
+                                                .filter(Boolean)
+                                                .map((section, index) => {
+                                                    const [title, ...lines] = section.trim().split('\n');
+                                                    return (
+                                                        <div key={index}>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">{title.replace(/-/g, '').trim()}</h4>
+                                                            <ul className="list-disc pl-5 space-y-1">
+                                                                {lines.filter(line => line.trim().startsWith('-')).map((line, i) => (
+                                                                    <li key={i}>{line.replace('-', '').trim()}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
-                            {/* Eligibility Criteria (structured) — heavy field, show skeleton while loading */}
-                            <div className="flex flex-col gap-3">
-                                <span className="text-sm font-medium text-gray-500">Eligibility Criteria</span>
-                                {modalDetailLoading ? (
-                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
-                                ) : displayData?.eligibility_summary_clinician_json ? (
+                            {/* Eligibility Criteria (structured) — only render when loading or data present */}
+                            {(modalDetailLoading || displayData?.eligibility_summary_clinician_json) && (
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-sm font-medium text-gray-500">Eligibility Criteria</span>
+                                    {modalDetailLoading ? (
+                                        <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                    ) : displayData?.eligibility_summary_clinician_json ? (
                                     <div className="bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto space-y-4 text-sm text-gray-700">
                                         {displayData.eligibility_summary_clinician_json.inclusion_criteria?.length > 0 && (
                                             <div>
@@ -432,18 +482,20 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                                         )}
                                     </div>
                                 ) : null}
-                            </div>
+                                </div>
+                            )}
 
-                            {/* Locations — heavy field, show skeleton while loading */}
-                            <div className="flex flex-col gap-2">
-                                <span className="text-sm font-medium text-gray-500">
-                                    {!modalDetailLoading && displayData?.locations?.length > 0
-                                        ? <>Locations <span className="text-gray-400 font-normal">({displayData.locations.length})</span></>
-                                        : 'Locations'}
-                                </span>
-                                {modalDetailLoading ? (
-                                    <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
-                                ) : displayData?.locations?.length > 0 ? (
+                            {/* Locations — only render when loading or data present */}
+                            {(modalDetailLoading || displayData?.locations?.length > 0) && (
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-sm font-medium text-gray-500">
+                                        {displayData?.locations?.length > 0
+                                            ? <>Locations <span className="text-gray-400 font-normal">({displayData.locations.length})</span></>
+                                            : 'Locations'}
+                                    </span>
+                                    {modalDetailLoading ? (
+                                        <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
+                                    ) : (
                                     <div className="flex flex-col gap-2">
                                         <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
                                             {displayData.locations.map((loc, i) => (
@@ -451,7 +503,7 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                                                     key={i}
                                                     onClick={() => setSelectedLocation(loc)}
                                                     className={`flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer transition-colors ${
-                                                        selectedLocation === loc ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-gray-50 hover:bg-gray-100'
+                                                        selectedLocation === loc ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-white border border-gray-100 shadow-sm hover:bg-gray-50'
                                                     }`}
                                                 >
                                                     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
@@ -463,11 +515,11 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                                                     </div>
                                                     {loc.status && (
                                                         <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${
-                                                            loc.status === 'RECRUITING' ? 'bg-green-100 text-green-700'
-                                                            : loc.status === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
+                                                            loc.status.toUpperCase() === 'RECRUITING' ? 'bg-green-100 text-green-700'
+                                                            : loc.status.toUpperCase() === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
                                                             : 'bg-yellow-100 text-yellow-700'
                                                         }`}>
-                                                            {loc.status.charAt(0) + loc.status.slice(1).toLowerCase()}
+                                                            {loc.status.charAt(0).toUpperCase() + loc.status.slice(1).toLowerCase()}
                                                         </span>
                                                     )}
                                                 </div>
@@ -493,8 +545,9 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                                             );
                                         })()}
                                     </div>
-                                ) : null}
-                            </div>
+                                )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Sticky footer */}

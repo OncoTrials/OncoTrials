@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import FormButton from '../../components/buttons/FormButton'
 import { InfoIcon } from '@phosphor-icons/react'
+import EligibilityMatcher from '../../utils/EligibilityMatcher'
 
 // Normalize strings for comparison: lowercase, strip hyphens/underscores/spaces
 const normalize = (str) =>
@@ -10,6 +11,7 @@ const MAX_AGE = 100;
 
 function SearchTrialsForm({ trials, onFilter }) {
     const [gender, setGender] = useState('')
+    const [age, setAge] = useState('')
     const [ageMin, setAgeMin] = useState(0)
     const [ageMax, setAgeMax] = useState(MAX_AGE)
     const [trialStatus, setTrialStatus] = useState('')
@@ -62,14 +64,33 @@ function SearchTrialsForm({ trials, onFilter }) {
     const validate = () => {
         const next = {}
         if (!cancerType.trim()) next.cancerType = 'Cancer Type is required'
+        // if (!mutationBiomarker.trim()) next.mutationBiomarker = 'Mutation / Biomarker is required'
+        if (age && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 120)) {
+            next.age = 'Enter a valid age (0–120)'
+        }
         setErrors(next)
         return Object.keys(next).length === 0
     }
+
+    const buildPatientObject = () => {
+        return {
+            gender,
+            age: age ? Number(age) : null,
+            cancerType,
+            mutationBiomarker,
+            ecog: ecogScore,
+            lineOfTreatment: lineOfTreatment ? Number(lineOfTreatment) : null,
+            cancerStage,
+        };
+    };
 
     // ── Filter logic ──────────────────────────────────────────────────────────
     const handleSearch = () => {
         if (!validate()) return
         if (!trials?.length) return // trials not loaded yet
+        
+        const patient = buildPatientObject()
+        const numAge = age ? Number(age) : null
 
         const hasAgeFilter = ageMin > 0 || ageMax < MAX_AGE
 
@@ -83,8 +104,16 @@ function SearchTrialsForm({ trials, onFilter }) {
                 selectedGender === 'all' ||
                 trialGender === selectedGender
 
-            // Range overlap: patient [ageMin, ageMax] must overlap trial's eligibility window
+            // Exact age check (from single age input, used by EligibilityMatcher)
             let ageMatch = true
+            if (numAge !== null) {
+                const rawMin = parseInt(trial.minimum_age, 10)
+                const rawMax = parseInt(trial.maximum_age, 10)
+                const minAge = isNaN(rawMin) ? 0 : rawMin
+                const maxAge = isNaN(rawMax) ? Infinity : rawMax
+                ageMatch = numAge >= minAge && numAge <= maxAge
+            }
+            // Range overlap check (from slider — overrides exact check when slider is active)
             if (hasAgeFilter) {
                 const trialMin = parseInt(trial.minimum_age, 10) || 0
                 const trialMax = parseInt(trial.maximum_age, 10) || MAX_AGE
@@ -130,14 +159,20 @@ function SearchTrialsForm({ trials, onFilter }) {
                 biomarkerMatch
             )
         })
+        
+        const resultsWithMatch = filtered.map(trial => ({
+            ...trial,
+            match: EligibilityMatcher.evaluatePatientAgainstTrial(patient, trial),
+        }))
 
-        setResultCount(filtered.length)
-        onFilter(filtered)
+        setResultCount(resultsWithMatch.length)
+        onFilter(resultsWithMatch)
     }
 
     // ── Reset — restore full list, clear all state ────────────────────────────
     const handleReset = () => {
         setGender('')
+        setAge('')
         setAgeMin(0)
         setAgeMax(MAX_AGE)
         setTrialStatus('')
