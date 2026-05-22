@@ -8,7 +8,7 @@ const LIST_COLUMNS = [
     'summary', 'conditions', 'sex', 'minimum_age', 'maximum_age',
     'location_city', 'location_state', 'location_country',
     'latitude', 'longitude', 'start_date', 'primary_completion_date',
-    'completion_date', 'eligibility_criteria_summary', 'biomarker_criteria',
+    'completion_date', 'eligibility_criteria_summary', 'biomarker_criteria', 'created_at'
 ].join(', ');
 
 // Simple in-memory cache with TTL — avoids re-querying Supabase on every page load
@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
         .from('trials')
         .select(LIST_COLUMNS, { count: 'exact' })
         .range(offset, offset + limit - 1)
-        .order('start_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
 

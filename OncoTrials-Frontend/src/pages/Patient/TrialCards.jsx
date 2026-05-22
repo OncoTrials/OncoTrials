@@ -97,6 +97,16 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
         return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     };
 
+    const getMatchStyle = (match) => {
+        switch (match?.status) {
+            case 'likely_eligible': return { bar: 'bg-green-400',  badge: 'bg-green-100 text-green-700 border-green-200',  text: 'Likely Eligible' };
+            case 'eligible':        return { bar: 'bg-teal-400',   badge: 'bg-teal-100 text-teal-700 border-teal-200',     text: 'Eligible' };
+            case 'needs_review':    return { bar: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  text: 'Needs Review' };
+            case 'not_eligible':    return { bar: 'bg-red-400',    badge: 'bg-red-100 text-red-700 border-red-200',        text: 'Not Eligible' };
+            default:                return { bar: 'bg-sky-200',    badge: '',                                              text: '' };
+        }
+    };
+
     const cleanEligibilitySummary = (summary) => {
         if (!summary) return '';
         return summary.replace(/##\s*/g, '').trim();
@@ -220,8 +230,8 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                             hover:shadow-md hover:border-sky-200 hover:-translate-y-0.5
                             transition-all duration-200 cursor-pointer overflow-hidden"
                     >
-                        {/* Top accent bar */}
-                        <div className="h-1.5 w-full shrink-0 bg-sky-200" />
+                        {/* Top accent bar — colored by eligibility match when available */}
+                        <div className={`h-1.5 w-full shrink-0 ${getMatchStyle(trial.match).bar}`} />
 
                         <div className="flex flex-col flex-1 p-5 gap-3">
                             {/* Header */}
@@ -243,11 +253,18 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                             </p>
 
                             {/* Footer */}
-                            <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide ${getStatusColor(trial.status)}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(trial.status)}`} />
-                                    {convertStatus(trial.status)}
-                                </span>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mt-auto pt-3 border-t border-gray-100">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide ${getStatusColor(trial.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(trial.status)}`} />
+                                        {convertStatus(trial.status)}
+                                    </span>
+                                    {trial.match && (
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border ${getMatchStyle(trial.match).badge}`}>
+                                            {getMatchStyle(trial.match).text}
+                                        </span>
+                                    )}
+                                </div>
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <ViewDetailsButtons onClick={() => openModal(trial)} Text="View Details" />
                                 </div>
@@ -346,8 +363,8 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                         className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Accent bar */}
-                        <div className="h-2 w-full shrink-0 bg-sky-200" />
+                        {/* Accent bar — colored by eligibility match when available */}
+                        <div className={`h-2 w-full shrink-0 ${getMatchStyle(modalData.match).bar}`} />
 
                         {/* Scrollable body */}
                         <div className="overflow-y-auto p-6 space-y-5">
@@ -355,6 +372,57 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                             <h2 className="text-lg font-semibold text-gray-900 leading-snug">
                                 {modalData.title}
                             </h2>
+
+                            {/* Eligibility match panel — only shown after a search */}
+                            {modalData.match && (() => {
+                                const style = getMatchStyle(modalData.match);
+                                const { met_inclusion, failed_inclusion, triggered_exclusion, missing_information } = modalData.match.reasons;
+                                return (
+                                    <div className={`rounded-xl border p-4 space-y-3 ${style.badge}`}>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-sm font-semibold">Eligibility Match</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 font-medium">Score: {modalData.match.score}/100</span>
+                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${style.badge}`}>{style.text}</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 text-xs">
+                                            {met_inclusion.length > 0 && (
+                                                <div>
+                                                    <p className="font-medium text-green-700 mb-1">Criteria met</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-green-800">
+                                                        {met_inclusion.map((r, i) => <li key={i}>{r}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {failed_inclusion.length > 0 && (
+                                                <div>
+                                                    <p className="font-medium text-red-700 mb-1">Criteria not met</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-red-800">
+                                                        {failed_inclusion.map((r, i) => <li key={i}>{r}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {triggered_exclusion.length > 0 && (
+                                                <div>
+                                                    <p className="font-medium text-red-700 mb-1">Exclusion criteria triggered</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-red-800">
+                                                        {triggered_exclusion.map((r, i) => <li key={i}>{r}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {missing_information.length > 0 && (
+                                                <div>
+                                                    <p className="font-medium text-gray-600 mb-1">Missing information</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-gray-600">
+                                                        {missing_information.map((r, i) => <li key={i}>{r}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Overview grid — uses displayData */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

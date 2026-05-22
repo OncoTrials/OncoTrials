@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import FormButton from '../../components/buttons/FormButton'
 import { InfoIcon } from '@phosphor-icons/react'
 import EligibilityMatcher from '../../utils/EligibilityMatcher'
@@ -7,13 +7,9 @@ import EligibilityMatcher from '../../utils/EligibilityMatcher'
 const normalize = (str) =>
     (str ?? '').toLowerCase().replace(/[-_\s]+/g, '')
 
-const MAX_AGE = 100;
-
 function SearchTrialsForm({ trials, onFilter }) {
     const [gender, setGender] = useState('')
     const [age, setAge] = useState('')
-    const [ageMin, setAgeMin] = useState(0)
-    const [ageMax, setAgeMax] = useState(MAX_AGE)
     const [trialStatus, setTrialStatus] = useState('')
     const [cancerStage, setCancerStage] = useState('')
     const [cancerType, setCancerType] = useState('')
@@ -23,48 +19,10 @@ function SearchTrialsForm({ trials, onFilter }) {
     const [errors, setErrors] = useState({});
     const [resultCount, setResultCount] = useState(null)
 
-    // Age Range slider
-    const sliderTrackRef = useRef(null);
-    const draggingThumb = useRef(null); // 'min' | 'max' | null
-
-    const valueFromPointer = (clientX) => {
-        const rect = sliderTrackRef.current.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        return Math.round(ratio * MAX_AGE);
-    };
-
-    const handleThumbPointerDown = (thumb, e) => {
-        e.preventDefault();
-        draggingThumb.current = thumb;
-        e.currentTarget.setPointerCapture(e.pointerId);
-    };
-
-    const handleThumbPointerMove = (e) => {
-        if (!draggingThumb.current) return;
-        const val = valueFromPointer(e.clientX);
-        if (draggingThumb.current === 'min') setAgeMin(Math.min(val, ageMax - 1));
-        else setAgeMax(Math.max(val, ageMin + 1));
-    };
-
-    const handleThumbPointerUp = () => { draggingThumb.current = null; };
-
-    const handleMinInput = (raw) => {
-        const v = parseInt(raw, 10);
-        if (isNaN(v)) return;
-        setAgeMin(Math.max(0, Math.min(v, ageMax - 1)));
-    };
-
-    const handleMaxInput = (raw) => {
-        const v = parseInt(raw, 10);
-        if (isNaN(v)) return;
-        setAgeMax(Math.min(MAX_AGE, Math.max(v, ageMin + 1)));
-    };
-
     // ── Validation ────────────────────────────────────────────────────────────
     const validate = () => {
         const next = {}
         if (!cancerType.trim()) next.cancerType = 'Cancer Type is required'
-        // if (!mutationBiomarker.trim()) next.mutationBiomarker = 'Mutation / Biomarker is required'
         if (age && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 120)) {
             next.age = 'Enter a valid age (0–120)'
         }
@@ -87,12 +45,10 @@ function SearchTrialsForm({ trials, onFilter }) {
     // ── Filter logic ──────────────────────────────────────────────────────────
     const handleSearch = () => {
         if (!validate()) return
-        if (!trials?.length) return // trials not loaded yet
-        
+        if (!trials?.length) return
+
         const patient = buildPatientObject()
         const numAge = age ? Number(age) : null
-
-        const hasAgeFilter = ageMin > 0 || ageMax < MAX_AGE
 
         const filtered = trials.filter(trial => {
             const trialGender = normalize(trial.sex)
@@ -104,7 +60,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                 selectedGender === 'all' ||
                 trialGender === selectedGender
 
-            // Exact age check (from single age input, used by EligibilityMatcher)
             let ageMatch = true
             if (numAge !== null) {
                 const rawMin = parseInt(trial.minimum_age, 10)
@@ -113,19 +68,12 @@ function SearchTrialsForm({ trials, onFilter }) {
                 const maxAge = isNaN(rawMax) ? Infinity : rawMax
                 ageMatch = numAge >= minAge && numAge <= maxAge
             }
-            // Range overlap check (from slider — overrides exact check when slider is active)
-            if (hasAgeFilter) {
-                const trialMin = parseInt(trial.minimum_age, 10) || 0
-                const trialMax = parseInt(trial.maximum_age, 10) || MAX_AGE
-                ageMatch = ageMin <= trialMax && ageMax >= trialMin
-            }
 
             const statusMatch =
                 !trialStatus ||
                 normalize(trial.status) === normalize(trialStatus)
 
             const conditions = trial.conditions ?? []
-
 
             const cancerTypeMatch =
                 !cancerType.trim() ||
@@ -159,7 +107,7 @@ function SearchTrialsForm({ trials, onFilter }) {
                 biomarkerMatch
             )
         })
-        
+
         const resultsWithMatch = filtered.map(trial => ({
             ...trial,
             match: EligibilityMatcher.evaluatePatientAgainstTrial(patient, trial),
@@ -173,8 +121,6 @@ function SearchTrialsForm({ trials, onFilter }) {
     const handleReset = () => {
         setGender('')
         setAge('')
-        setAgeMin(0)
-        setAgeMax(MAX_AGE)
         setTrialStatus('')
         setCancerStage('')
         setCancerType('')
@@ -183,17 +129,12 @@ function SearchTrialsForm({ trials, onFilter }) {
         setLineOfTreatment('')
         setErrors({})
         setResultCount(null)
-        onFilter(null);
-        };
+        onFilter(null)
+    }
 
     // ── Shared input class ────────────────────────────────────────────────────
     const inputCls =
         'text-sm w-full px-4 py-2 border rounded-lg shadow-sm transition duration-300 ease-in-out ' +
-        'focus:-translate-y-1 focus:outline-blue-300 hover:shadow-lg hover:border-blue-300 bg-gray-100'
-
-    // Narrower input for the age min/max fields — px-2 instead of px-4 so text isn't clipped
-    const ageInputCls =
-        'text-sm px-2 py-2 border rounded-lg shadow-sm transition duration-300 ease-in-out ' +
         'focus:-translate-y-1 focus:outline-blue-300 hover:shadow-lg hover:border-blue-300 bg-gray-100'
 
     const fieldCls = 'w-full p-3 bg-white rounded-lg font-sans'
@@ -227,84 +168,20 @@ function SearchTrialsForm({ trials, onFilter }) {
                 </select>
             </div>
 
-            {/* Age Range */}
+            {/* Age */}
             <div className={fieldCls}>
-                <div className="flex items-center justify-between mb-2">
-                    <label className={labelCls} style={{ marginBottom: 0 }}>Age Range</label>
-                    <span className="text-sm font-semibold text-sky-600">
-                        {ageMin === 0 && ageMax === MAX_AGE
-                            ? 'Any'
-                            : `${ageMin} – ${ageMax === MAX_AGE ? `${MAX_AGE}+` : ageMax} yrs`}
-                    </span>
-                </div>
-
-                {/* Custom dual-handle slider — pointer capture keeps each thumb
-                    responsive even when the cursor drifts off it mid-drag */}
-                <div
-                    ref={sliderTrackRef}
-                    className="relative h-5 flex items-center mx-1 select-none"
-                >
-                    {/* Background track */}
-                    <div className="absolute inset-x-0 h-1.5 rounded-full bg-gray-200" />
-                    {/* Highlighted range */}
-                    <div
-                        className="absolute h-1.5 rounded-full bg-sky-400"
-                        style={{
-                            left:  `${(ageMin / MAX_AGE) * 100}%`,
-                            right: `${100 - (ageMax / MAX_AGE) * 100}%`,
-                        }}
-                    />
-                    {/* Min thumb */}
-                    <div
-                        className="absolute w-4 h-4 bg-white border-2 border-sky-500 rounded-full shadow cursor-grab active:cursor-grabbing touch-none"
-                        style={{ left: `calc(${(ageMin / MAX_AGE) * 100}% - 8px)`, zIndex: 3 }}
-                        onPointerDown={(e) => handleThumbPointerDown('min', e)}
-                        onPointerMove={handleThumbPointerMove}
-                        onPointerUp={handleThumbPointerUp}
-                    />
-                    {/* Max thumb */}
-                    <div
-                        className="absolute w-4 h-4 bg-white border-2 border-sky-500 rounded-full shadow cursor-grab active:cursor-grabbing touch-none"
-                        style={{ left: `calc(${(ageMax / MAX_AGE) * 100}% - 8px)`, zIndex: 4 }}
-                        onPointerDown={(e) => handleThumbPointerDown('max', e)}
-                        onPointerMove={handleThumbPointerMove}
-                        onPointerUp={handleThumbPointerUp}
-                    />
-                </div>
-
-                <div className="flex justify-between text-xs text-gray-400 mt-1 mb-3">
-                    <span>0</span>
-                    <span>{MAX_AGE}+</span>
-                </div>
-
-                {/* Optional direct-entry inputs — synced bidirectionally with slider */}
-                <div className="flex items-center gap-2">
-                    <input
-                        type="number" min={0} max={ageMax - 1}
-                        value={ageMin === 0 ? '' : ageMin}
-                        placeholder="Min"
-                        onChange={(e) => handleMinInput(e.target.value)}
-                        className={`${ageInputCls} border-gray-300 text-center w-16`}
-                    />
-                    <span className="text-gray-400 text-sm">–</span>
-                    <input
-                        type="number" min={ageMin + 1} max={MAX_AGE}
-                        value={ageMax === MAX_AGE ? '' : ageMax}
-                        placeholder="Max"
-                        onChange={(e) => handleMaxInput(e.target.value)}
-                        className={`${ageInputCls} border-gray-300 text-center w-16`}
-                    />
-                    <span className="text-gray-400 text-xs">yrs</span>
-                    {(ageMin > 0 || ageMax < MAX_AGE) && (
-                        <button
-                            type="button"
-                            onClick={() => { setAgeMin(0); setAgeMax(MAX_AGE); }}
-                            className="ml-auto text-xs text-sky-500 hover:text-sky-700"
-                        >
-                            Clear
-                        </button>
-                    )}
-                </div>
+                <label className={labelCls} htmlFor="age-input">Age</label>
+                <input
+                    className={`${inputCls} ${errors.age ? 'border-red-400' : 'border-gray-300'}`}
+                    placeholder="Enter your age"
+                    type="number"
+                    min={0}
+                    max={120}
+                    value={age}
+                    onChange={(e) => { setAge(e.target.value); setErrors(p => ({ ...p, age: undefined })) }}
+                    id="age-input"
+                />
+                {errors.age && <p className={errorCls}>{errors.age}</p>}
             </div>
 
             {/* Trial Status */}
@@ -324,7 +201,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                 </select>
             </div>
 
-
             {/* Stage */}
             <div className={fieldCls}>
                 <label className={labelCls} htmlFor="cancer-stage-input">Stage</label>
@@ -343,6 +219,8 @@ function SearchTrialsForm({ trials, onFilter }) {
                     <option value="advanced">Advanced</option>
                 </select>
             </div>
+
+            {/* Line of Treatment */}
             <div className={fieldCls}>
                 <label className={labelCls} htmlFor="line-of-treatment-input">Line of Treatment</label>
                 <select
@@ -375,8 +253,9 @@ function SearchTrialsForm({ trials, onFilter }) {
                 {errors.cancerType && <p className={errorCls}>{errors.cancerType}</p>}
             </div>
 
+            {/* ECOG Score */}
             <div className={fieldCls}>
-                <label className={labelCls} htmlFor="age-input">ECOG Score</label>
+                <label className={labelCls} htmlFor="ecog-input">ECOG Score</label>
                 <input
                     className={`${inputCls} ${errors.ecogScore ? 'border-red-400' : 'border-gray-300'}`}
                     placeholder="Enter ECOG Score"
