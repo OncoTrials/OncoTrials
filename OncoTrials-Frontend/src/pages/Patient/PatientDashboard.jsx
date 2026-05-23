@@ -38,6 +38,19 @@ function PatientDashboard() {
 
   // null = no search performed yet; [] = search returned no results; [...] = results
   const [filteredTrials, setFilteredTrials] = useState(null);
+  const [browseAllPending, setBrowseAllPending] = useState(false);
+
+  useEffect(() => {
+    if (!trialsLoading && browseAllPending) {
+      setBrowseAllPending(false);
+      if (!trialsError) setFilteredTrials(trials ?? []);
+    }
+  }, [trialsLoading, browseAllPending, trialsError, trials]);
+
+  const handleShowAll = () => {
+    if (trialsLoading) { setBrowseAllPending(true); return; }
+    setFilteredTrials(trials ?? []);
+  };
 
   return (
     <>
@@ -62,7 +75,7 @@ function PatientDashboard() {
       lg:block
     `}
         >
-          <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} />
+          <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} isLoading={trialsLoading} />
         </div>
 
         {/* Results */}
@@ -71,7 +84,8 @@ function PatientDashboard() {
             trials={filteredTrials}
             isLoading={trialsLoading}
             trialsError={trialsError}
-            onShowAll={() => setFilteredTrials(trials || null)}
+            browseAllPending={browseAllPending}
+            onShowAll={handleShowAll}
             onRetry={refetchTrials}
           />
         </div>

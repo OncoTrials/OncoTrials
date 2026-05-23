@@ -7,7 +7,7 @@ import EligibilityMatcher from '../../utils/EligibilityMatcher'
 const normalize = (str) =>
     (str ?? '').toLowerCase().replace(/[-_\s]+/g, '')
 
-function SearchTrialsForm({ trials, onFilter }) {
+function SearchTrialsForm({ trials, onFilter, isLoading }) {
     const [gender, setGender] = useState('')
     const [age, setAge] = useState('')
     const [trialStatus, setTrialStatus] = useState('')
@@ -286,7 +286,7 @@ function SearchTrialsForm({ trials, onFilter }) {
 
             {/* Actions */}
             <div className="flex flex-row font-sm md:font-md items-center justify-center space-x-5">
-                <FormButton text="Search Trials" type='submit' onClick={handleSearch} />
+                <FormButton text={isLoading ? 'Loading…' : 'Search Trials'} type='submit' onClick={handleSearch} disabled={isLoading} />
                 <FormButton text="Reset" type='button' onClick={handleReset} />
             </div>
         </>

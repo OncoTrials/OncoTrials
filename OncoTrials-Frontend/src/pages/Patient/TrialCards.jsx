@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
 import { getTrialById } from '../../api/trialsApi';
 
-function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry }) {
+function TrialCards({ trials, isLoading, trialsError = false, browseAllPending = false, onShowAll, onRetry }) {
     const [modalData, setModalData] = useState(null);       // partial data (list columns)
     const [fullModalData, setFullModalData] = useState(null); // full data (detail fetch)
     const [modalDetailLoading, setModalDetailLoading] = useState(false);
@@ -112,41 +112,41 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
         return summary.replace(/##\s*/g, '').trim();
     };
 
-    // Loading state
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[750px]">
-                <p className="text-lg text-gray-400 animate-pulse">Loading trials…</p>
-            </div>
-        );
-    }
-
-    // No search performed yet — show error or instructional prompt
+    // No search performed yet — show instructional prompt immediately (even while loading)
     if (trials === null) {
-        if (trialsError) {
-            return (
-                <div className="flex flex-col items-center justify-center min-h-[750px] gap-4 text-center px-8">
-                    <div className="flex flex-col gap-2 max-w-sm">
-                        <p className="text-lg font-semibold text-red-600">Failed to load trials</p>
-                        <p className="text-sm text-gray-500">Something went wrong while fetching trial data. Please try again.</p>
+        // User clicked Browse All (or search) while loading — now show loading or error
+        if (browseAllPending) {
+            if (trialsError) {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-[750px] gap-4 text-center px-8">
+                        <div className="flex flex-col gap-2 max-w-sm">
+                            <p className="text-lg font-semibold text-red-600">Failed to load trials</p>
+                            <p className="text-sm text-gray-500">Something went wrong while fetching trial data. Please try again later.</p>
+                        </div>
+                        <button
+                            onClick={handleRetry}
+                            disabled={retrying}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors duration-200 cursor-pointer shadow-sm"
+                        >
+                            {retrying && (
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                            )}
+                            {retrying ? 'Retrying…' : 'Try Again'}
+                        </button>
                     </div>
-                    <button
-                        onClick={handleRetry}
-                        disabled={retrying}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors duration-200 cursor-pointer shadow-sm"
-                    >
-                        {retrying && (
-                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                            </svg>
-                        )}
-                        {retrying ? 'Retrying…' : 'Try Again'}
-                    </button>
+                );
+            }
+            return (
+                <div className="flex items-center justify-center min-h-[750px]">
+                    <p className="text-lg text-gray-400 animate-pulse">Loading trials…</p>
                 </div>
             );
         }
 
+        // Default: show instructional content right away
         return (
             <div className="flex flex-col items-center justify-center min-h-[750px] gap-8 px-8 py-12">
                 <div className="flex flex-col gap-2 text-center max-w-lg">
@@ -239,11 +239,18 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                                 <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 flex-1">
                                     {trial.title}
                                 </h3>
-                                {trial.completion_date && (
-                                    <span className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide bg-gray-100 text-gray-600 border border-gray-200">
-                                        Ends {formatDate(trial.completion_date)}
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    {trial.match && (
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getMatchStyle(trial.match).badge}`}>
+                                            {getMatchStyle(trial.match).text}
+                                        </span>
+                                    )}
+                                    {trial.completion_date && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide bg-gray-100 text-gray-600 border border-gray-200">
+                                            Ends {formatDate(trial.completion_date)}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Snippet */}
@@ -253,18 +260,11 @@ function TrialCards({ trials, isLoading, trialsError = false, onShowAll, onRetry
                             </p>
 
                             {/* Footer */}
-                            <div className="flex flex-wrap items-center justify-between gap-2 mt-auto pt-3 border-t border-gray-100">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide ${getStatusColor(trial.status)}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(trial.status)}`} />
-                                        {convertStatus(trial.status)}
-                                    </span>
-                                    {trial.match && (
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border ${getMatchStyle(trial.match).badge}`}>
-                                            {getMatchStyle(trial.match).text}
-                                        </span>
-                                    )}
-                                </div>
+                            <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide ${getStatusColor(trial.status)}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(trial.status)}`} />
+                                    {convertStatus(trial.status)}
+                                </span>
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <ViewDetailsButtons onClick={() => openModal(trial)} Text="View Details" />
                                 </div>

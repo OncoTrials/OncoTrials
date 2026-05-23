@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import PhysicianNavbar from '../../components/layout/PhysicianNavbar'
 import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
@@ -34,7 +34,19 @@ function PhysicianDashboard() {
 
     // null = no search performed yet; [] = search returned no results; [...] = results
     const [filteredTrials, setFilteredTrials] = useState(null);
+    const [browseAllPending, setBrowseAllPending] = useState(false);
 
+    useEffect(() => {
+        if (!trialsLoading && browseAllPending) {
+            setBrowseAllPending(false);
+            if (!trialsError) setFilteredTrials(trials ?? []);
+        }
+    }, [trialsLoading, browseAllPending, trialsError, trials]);
+
+    const handleShowAll = () => {
+        if (trialsLoading) { setBrowseAllPending(true); return; }
+        setFilteredTrials(trials ?? []);
+    };
 
     return (
         <>
@@ -59,7 +71,7 @@ function PhysicianDashboard() {
         lg:block
       `}
           >
-            <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} />
+            <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} isLoading={trialsLoading} />
           </div>
   
           {/* Results */}
@@ -68,7 +80,8 @@ function PhysicianDashboard() {
               trials={filteredTrials}
               isLoading={trialsLoading}
               trialsError={trialsError}
-              onShowAll={() => setFilteredTrials(trials || null)}
+              browseAllPending={browseAllPending}
+              onShowAll={handleShowAll}
               onRetry={refetchTrials}
             />
           </div>
