@@ -38,6 +38,7 @@ export default function ContactPage() {
         import.meta.env.VITE_TEMPLATE_ID,
         {
           name: formData.firstName + " " + formData.lastName,
+          time: new Date(),
           email: formData.email,
           organization: formData.organization,
           subject: formData.subject,
