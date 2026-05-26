@@ -1,6 +1,5 @@
 // POST /api/v1/match — rank trials for a patient.
 //
-// Pipeline (see epic-fhir-integration-plan.md §4):
 //   Stage 1 SQL prefilter → Stage 2 rule matcher → Stage 3 AI explainer.
 //
 // 24h result cache: identical patient state under the same org hits the cached

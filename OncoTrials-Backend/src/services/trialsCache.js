@@ -1,6 +1,5 @@
 // trialsCache.js — single source of truth for the "all trials" Redis cache.
 //
-// Design (see epic-debug_004.md):
 //   • The cache key `trials:all` holds the entire trial corpus as one JSON
 //     payload. Reads from /trials?limit=all serve directly from here.
 //   • The importer (run_import.js) is responsible for keeping it fresh. After

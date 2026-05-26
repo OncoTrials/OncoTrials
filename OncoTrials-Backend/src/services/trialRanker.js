@@ -1,6 +1,5 @@
 // trialRanker.js — Stage 1 SQL prefilter + Stage 2 rule-based ranking.
 //
-// Pipeline (see epic-fhir-integration-plan.md §4):
 //   1. Pull a manageable candidate set (~hundreds) from Supabase using
 //      structured filters that match the patient profile.
 //   2. Run the rule-based EligibilityMatcher on each candidate, sort by score.

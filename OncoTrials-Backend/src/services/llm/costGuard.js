@@ -1,7 +1,5 @@
 // costGuard.js — two-tier daily LLM spend cap (per-org + global).
 //
-// See epic-fhir-integration-plan.md §6.4.
-//
 // Behaviour:
 //   - Before each LLM call, ask `canSpend(orgId, estimatedCostUsd)`. If either
 //     cap would be exceeded, fall back to a rule-only response and skip the
