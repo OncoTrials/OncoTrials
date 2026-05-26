@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 
 const ALLOWED_ORIGINS = [
     'https://trialsonco.com',
@@ -16,6 +17,7 @@ const ALLOWED_ORIGINS = [
 const FIREBASE_PREVIEW_RE = /^https:\/\/bubbly-solution-494204-d2--[a-z0-9-]+\.web\.app$/i;
 
 const app = express();
+app.use(compression());
 app.use(cors({
     origin: (origin, callback) => {
         // Server-to-server (no Origin header), known fixed origins, or a

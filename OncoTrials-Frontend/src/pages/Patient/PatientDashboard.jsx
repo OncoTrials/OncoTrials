@@ -42,14 +42,18 @@ function PatientDashboard() {
 
   useEffect(() => {
     if (!trialsLoading && browseAllPending) {
-      setBrowseAllPending(false);
-      if (!trialsError) setFilteredTrials(trials ?? []);
+      if (trialsError) {
+        // Keep browseAllPending=true to let TrialCards display the error state
+      } else {
+        setBrowseAllPending(false);
+        setFilteredTrials(trials || null);
+      }
     }
   }, [trialsLoading, browseAllPending, trialsError, trials]);
 
   const handleShowAll = () => {
-    if (trialsLoading) { setBrowseAllPending(true); return; }
-    setFilteredTrials(trials ?? []);
+    if (trialsLoading || trialsError) { setBrowseAllPending(true); return; }
+    setFilteredTrials(trials || null);
   };
 
   return (

@@ -25,6 +25,9 @@ const setCached = (key, data) => redis.set(key, data, { ex: CACHE_TTL_SECONDS })
 //     never block on Supabase pagination — only the very first call after
 //     a fresh deploy will trigger a lazy warm.
 router.get('/', async (req, res) => {
+    // Cache the response in the browser for 5 minutes, and in the CDN for 24 hours
+    res.set('Cache-Control', 'public, max-age=300, s-maxage=86400');
+
     const wantAll = String(req.query.limit || '').toLowerCase() === 'all';
     const version = await getCacheVersion();
 
