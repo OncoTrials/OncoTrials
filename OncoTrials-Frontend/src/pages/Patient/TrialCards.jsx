@@ -478,14 +478,14 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                             )}
 
                             {/* Study Description — heavy field, show skeleton until fullModalData arrives */}
-                            {(modalDetailLoading || displayData?.study_description) ? (
+                            {(modalDetailLoading || displayData?.study_description || displayData?.summary) ? (
                                 <div className="flex flex-col gap-1">
                                     <span className="text-sm font-medium text-gray-500">Study Description</span>
                                     {modalDetailLoading ? (
                                         <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
                                     ) : (
-                                        <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto">
-                                            {displayData.study_description}
+                                        <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3 max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                            {displayData.study_description || displayData.summary}
                                         </p>
                                     )}
                                 </div>
