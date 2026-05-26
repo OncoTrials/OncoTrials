@@ -23,6 +23,8 @@ import PatientOnboarding from './pages/Patient/PatientOnboarding';
 import InputTrials from './pages/InputTrials';
 import AboutOncoTrials from './pages/AboutPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import EpicLaunchLanding from './pages/epic/EpicLaunchLanding';
+import MatchResults from './pages/epic/MatchResults';
 
 export const queryClient = new QueryClient();
 
@@ -42,6 +44,9 @@ function App() {
           <Route path='/forgot-password' element={<ForgotPassword />} />
           <Route path='/change-password' element={<ChangePassword />} />
           <Route path='/auth/callback' element={<AuthCallback />} />
+          {/* SMART on FHIR landing + results — no app auth required, the SMART JWT carries auth */}
+          <Route path='/epic/launched' element={<EpicLaunchLanding />} />
+          <Route path='/match/:requestId' element={<MatchResults />} />
           <Route path='/trials' element={<PatientDashboard />} />
           <Route path='/about' element={<AboutOncoTrials/>} />
           <Route path='/privacy-policy' element={<PrivacyPolicy/>} />

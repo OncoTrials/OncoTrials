@@ -1,39 +1,59 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../db/supabaseClient');
+const { redis } = require('../db/redisClient');
+const {
+    LIST_COLUMNS,
+    getCacheVersion,
+    bumpCacheVersion,
+    getAllTrialsCached,
+    warmAllTrialsCache,
+} = require('../services/trialsCache');
 
-// Columns returned for list views — heavy text fields are excluded to reduce egress
-const LIST_COLUMNS = [
-    'id', 'nct_id', 'title', 'status', 'sponsor',
-    'summary', 'conditions', 'sex', 'minimum_age', 'maximum_age',
-    'location_city', 'location_state', 'location_country',
-    'latitude', 'longitude', 'start_date', 'primary_completion_date',
-    'completion_date', 'eligibility_criteria_summary', 'biomarker_criteria', 'created_at'
-].join(', ');
+// Per-page list cache TTL: 24h. Same versioning scheme as the :all cache —
+// when the importer bumps `trials:cache_version`, all `trials:v<n>:…` keys
+// become orphaned and the next request misses → repopulates at the new
+// version. Old entries die on their own via TTL; no scan/delete needed.
+const CACHE_TTL_SECONDS = 24 * 60 * 60;
 
-// Simple in-memory cache with TTL — avoids re-querying Supabase on every page load
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const cache = new Map();
-
-function getCached(key) {
-    const entry = cache.get(key);
-    if (!entry) return null;
-    if (Date.now() > entry.expiresAt) { cache.delete(key); return null; }
-    return entry.data;
-}
-
-function setCached(key, data) {
-    cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
-}
+const getCached = (key)       => redis.get(key);
+const setCached = (key, data) => redis.set(key, data, { ex: CACHE_TTL_SECONDS });
 
 // GET /trials?page=1&limit=20
+//   • limit=all returns every trial in one response. The :all cache is
+//     maintained by the importer (after each successful run) so user reads
+//     never block on Supabase pagination — only the very first call after
+//     a fresh deploy will trigger a lazy warm.
 router.get('/', async (req, res) => {
+    const wantAll = String(req.query.limit || '').toLowerCase() === 'all';
+    const version = await getCacheVersion();
+
+    // ---- limit=all path: served from the importer-maintained Redis cache ---
+    if (wantAll) {
+        const cached = await getAllTrialsCached();
+        if (cached) return res.json(cached);
+
+        // Cold cache — paginate now and warm it. After this, the next request
+        // hits Redis directly. Subsequent imports will refresh atomically so
+        // users never hit this path again under normal operation.
+        try {
+            console.log('[trials] :all cache cold — warming from Supabase');
+            await warmAllTrialsCache();
+            const fresh = await getAllTrialsCached();
+            return res.json(fresh);
+        } catch (err) {
+            console.error('[trials] limit=all warm failed:', err?.message || err);
+            return res.status(500).json({ error: err?.message || 'failed to fetch all trials' });
+        }
+    }
+
+    // ---- paginated path (existing behavior) -------------------------------
     const limit = Math.min(parseInt(req.query.limit) || 20, 5000); // cap at 5000
     const page  = Math.max(parseInt(req.query.page)  || 1,  1);
     const offset = (page - 1) * limit;
 
-    const cacheKey = `trials:${page}:${limit}`;
-    const cached = getCached(cacheKey);
+    const cacheKey = `trials:v${version}:${page}:${limit}`;
+    const cached = await getCached(cacheKey);
     if (cached) return res.json(cached);
 
     const { data, error, count } = await supabase
@@ -45,13 +65,24 @@ router.get('/', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
 
     const payload = { data, total: count, page, limit };
-    setCached(cacheKey, payload);
+    await setCached(cacheKey, payload);
     res.json(payload);
 });
+
+// Individual trial detail is also worth caching — most clicks open the same
+// few trials per session. Short TTL is fine since the heavy hitter is the
+// list endpoint above.
+const DETAIL_CACHE_TTL_SECONDS = 6 * 60 * 60;  // 6h
 
 // GET /trials/:id — full row for the detail page
 router.get('/:id', async (req, res) => {
     const { id } = req.params;
+
+    const version = await getCacheVersion();
+    const cacheKey = `trial:v${version}:${id}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(cached);
+
     const { data, error } = await supabase
         .from('trials')
         .select('*')
@@ -59,6 +90,7 @@ router.get('/:id', async (req, res) => {
         .single();
 
     if (error) return res.status(404).json({ error: error.message });
+    await redis.set(cacheKey, data, { ex: DETAIL_CACHE_TTL_SECONDS });
     res.json(data);
 });
 
@@ -105,6 +137,15 @@ router.post('/', async (req, res) => {
         if (error) {
             console.error('Supabase insert error:', error);
             return res.status(500).json({ error: error.message });
+        }
+
+        // Bust per-page caches via version bump, then refresh the :all cache
+        // so the new trial shows up immediately on Browse All.
+        await bumpCacheVersion('manual POST /trials');
+        try {
+            await warmAllTrialsCache();
+        } catch (err) {
+            console.error('[trials] post-insert :all cache refresh failed (continuing):', err?.message || err);
         }
 
         return res.status(201).json(data[0]);
