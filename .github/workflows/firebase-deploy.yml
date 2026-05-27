@@ -30,6 +30,9 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_SERVICE_ID: ${{ secrets.VITE_SERVICE_ID }}
+          VITE_TEMPLATE_ID: ${{ secrets.VITE_TEMPLATE_ID }}
+          VITE_EMAILJS_PUB_KEY: ${{ secrets.VITE_EMAILJS_PUB_KEY }}
 
       - name: Deploy
         run: npx firebase-tools deploy --only hosting --project bubbly-solution-494204-d2 --token ${{ secrets.FIREBASE_TOKEN }}
