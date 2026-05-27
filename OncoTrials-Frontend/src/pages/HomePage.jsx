@@ -281,7 +281,7 @@ function HomePage() {
                         </div>
 
                         <p className="mt-7 text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto md:mx-0">
-                        TrialsOnco helps oncologists find the right clinical trials for their patients, instantly and within their normal workflow.
+                            TrialsOnco helps oncologists find the right clinical trials for their patients, instantly and within their normal workflow.
                         </p>
 
                         <div className="mt-10 flex flex-wrap gap-3 justify-center md:justify-start items-center">
@@ -337,12 +337,12 @@ function HomePage() {
                             </p>
 
                             <h2 className="text-3xl md:text-5xl font-bold leading-tight text-gray-900">
-                            Most eligible cancer patients are never enrolled in clinical trials.
+                                Most eligible cancer patients are never enrolled in clinical trials.
                             </h2>
                         </div>
 
                         <p className="text-lg text-gray-600 leading-relaxed">
-                        Not because trials don’t exist, but because matching patients to trials is time-consuming, fragmented, and often happens too late. Trial data lives across platforms like ClinicalTrials.gov, and eligibility criteria are difficult to apply in real time.
+                            Not because trials don’t exist, but because matching patients to trials is time-consuming, fragmented, and often happens too late. Trial data lives across platforms like ClinicalTrials.gov, and eligibility criteria are difficult to apply in real time.
                         </p>
                     </motion.div>
 
@@ -370,11 +370,11 @@ function HomePage() {
                     </p>
 
                     <h2 className="text-3xl md:text-5xl font-bold text-gray-900 leading-tight max-w-4xl mx-auto">
-                    TrialsOnco doesn’t ask clinicians to search for trials. It brings it to them.
+                        TrialsOnco doesn’t ask clinicians to search for trials. It brings it to them.
                     </h2>
 
                     <p className="mt-8 text-lg text-gray-600 leading-relaxed max-w-3xl mx-auto">
-                    By integrating directly into systems like Epic, TrialsOnco surfaces high-probability matches at the exact moment decisions are being made.
+                        By integrating directly into systems like Epic, TrialsOnco surfaces high-probability matches at the exact moment decisions are being made.
                     </p>
                 </div>
             </section>
@@ -399,7 +399,7 @@ function HomePage() {
                         </h3>
 
                         <p className="text-gray-600 leading-relaxed text-lg mb-5">
-                        TrialsOnco makes trial consideration consistent, fast, and part of routine care, not something that depends on time, memory, or manual effort.
+                            TrialsOnco makes trial consideration consistent, fast, and part of routine care, not something that depends on time, memory, or manual effort.
                         </p>
                     </motion.div>
 
@@ -503,30 +503,35 @@ function HomePage() {
 
                             <form className="space-y-6" onSubmit={handleSubmit}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        First Name
-                                    </label> */}
-                                    <input
-                                        type="text"
-                                        name="firstName"
-                                        placeholder="First Name"
-                                        value={formData.firstName}
-                                        onChange={handleChange}
-                                        className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            First Name
+                                        </label>
 
-                                    {/* <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Last Name
-                                    </label> */}
+                                        <input
+                                            type="text"
+                                            name="firstName"
+                                            placeholder="First Name"
+                                            value={formData.firstName}
+                                            onChange={handleChange}
+                                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                        />
+                                    </div>
 
-                                    <input
-                                        type="text"
-                                        name="lastName"
-                                        placeholder="Last Name"
-                                        value={formData.lastName}
-                                        onChange={handleChange}
-                                        className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Last Name
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            name="lastName"
+                                            placeholder="Last Name"
+                                            value={formData.lastName}
+                                            onChange={handleChange}
+                                            className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                        />
+                                    </div>
                                 </div>
 
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
