@@ -14,9 +14,9 @@ function PageFooter() {
                         className="[&>span]:!text-black"
                     />
                     <FooterLinkGroup className="!text-black">
-                        <FooterLink href="/about" className="hover:underline underline-offset-2">About</FooterLink>
+                        <FooterLink href="/#about" className="hover:underline underline-offset-2">About</FooterLink>
                         <FooterLink href="/privacy-policy" className="hover:underline underline-offset-2">Privacy Policy</FooterLink>
-                        <FooterLink href="/contact" className="hover:underline underline-offset-2">Contact</FooterLink>
+                        <FooterLink href="/#contact" className="hover:underline underline-offset-2">Contact</FooterLink>
                     </FooterLinkGroup>
                 </div>
                 <FooterDivider />
