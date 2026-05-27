@@ -17,7 +17,7 @@ import {
 import { easeInOut, motion } from 'motion/react'
 
 const EyebrowLabel = ({ children }) => (
-    <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 mb-4">
+    <span className="inline-flex items-center gap-2 font-semibold uppercase tracking-[0.22em] text-blue-600 mb-4">
         <span className="w-4 h-px bg-blue-400 inline-block" />
         {children}
         <span className="w-4 h-px bg-blue-400 inline-block" />
@@ -127,12 +127,8 @@ const HowItWorksCards = () => {
         >
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-14">
-                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 mb-3">
+                    <h2 className="text-lg font-semibold uppercase tracking-[0.2em] text-blue-600 mb-3">
                         <EyebrowLabel>How It Works</EyebrowLabel>
-                    </p>
-
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
-                        Designed to reduce friction at every step
                     </h2>
                 </div>
 
@@ -288,7 +284,6 @@ function HomePage() {
                             <GetStartedDropdown label="Login" menuItems={LoginDropdownItems} />
                             <GetStartedDropdown label="Register" menuItems={RegisterDropdownItems} />
                             <button
-                                // href="#contact"
                                 onClick={() => scrollToSection('contact')}
                                 className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-[14px] text-sm font-semibold text-slate-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                             >
@@ -332,7 +327,7 @@ function HomePage() {
                         className="space-y-8"
                     >
                         <div>
-                            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 mb-3">
+                            <p className="text-lg font-semibold uppercase tracking-[0.2em] text-blue-600 mb-3">
                                 <EyebrowLabel>The Problem</EyebrowLabel>
                             </p>
 
@@ -365,7 +360,7 @@ function HomePage() {
             {/* DIFFERENTIATOR */}
             <section className="px-6 md:px-12 lg:px-20 py-24 ">
                 <div className="max-w-6xl mx-auto text-center">
-                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 mb-3">
+                    <p className="text-lg font-semibold uppercase tracking-[0.2em] text-blue-600 mb-3">
                         <EyebrowLabel>What makes TrialsOnco Different</EyebrowLabel>
                     </p>
 
