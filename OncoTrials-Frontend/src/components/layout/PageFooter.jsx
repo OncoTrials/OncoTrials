@@ -1,7 +1,16 @@
 
 import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLink, FooterLinkGroup } from "flowbite-react";
+import {HashLink} from "react-router-hash-link";
 
 function PageFooter() {
+    const currentYear = new Date().getFullYear();
+
+    const scrollToSection = (section) => {
+        document.getElementById(section)?.scrollIntoView({
+            behavior: 'smooth',
+        })
+    }
+
     return (
         <Footer container className="mt-10 !bg-transparent">
             <div className="w-full text-center">
@@ -13,14 +22,14 @@ function PageFooter() {
                         name="OncoTrials™"
                         className="[&>span]:!text-black"
                     />
-                    <FooterLinkGroup className="!text-black">
-                        <FooterLink href="/#about" className="hover:underline underline-offset-2">About</FooterLink>
-                        <FooterLink href="/privacy-policy" className="hover:underline underline-offset-2">Privacy Policy</FooterLink>
-                        <FooterLink href="/#contact" className="hover:underline underline-offset-2">Contact</FooterLink>
+                    <FooterLinkGroup className="!text-black space-x-3">
+                        <HashLink smooth to="/#about" className="hover:underline underline-offset-2">About</HashLink>
+                        <HashLink to="/privacy-policy" className="hover:underline underline-offset-2">Privacy Policy</HashLink>
+                        <HashLink smooth to="/#contact" className="hover:underline underline-offset-2">Contact</HashLink>
                     </FooterLinkGroup>
                 </div>
                 <FooterDivider />
-                <FooterCopyright href="/" by="TrialsOnco™" year={2025} />
+                <FooterCopyright href="/" by="TrialsOnco™" year={currentYear} />
             </div>
         </Footer>
     );
