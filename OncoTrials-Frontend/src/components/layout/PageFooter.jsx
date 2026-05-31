@@ -1,15 +1,9 @@
 
-import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLink, FooterLinkGroup } from "flowbite-react";
+import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLinkGroup } from "flowbite-react";
 import {HashLink} from "react-router-hash-link";
 
 function PageFooter() {
     const currentYear = new Date().getFullYear();
-
-    const scrollToSection = (section) => {
-        document.getElementById(section)?.scrollIntoView({
-            behavior: 'smooth',
-        })
-    }
 
     return (
         <Footer container className="mt-10 !bg-transparent">
