@@ -23,6 +23,7 @@ import PatientOnboarding from './pages/Patient/PatientOnboarding';
 import InputTrials from './pages/InputTrials';
 import AboutOncoTrials from './pages/AboutPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import ContactPage from './pages/ContactPage';
 
 export const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ function App() {
           <Route path='/trials' element={<PatientDashboard />} />
           <Route path='/about' element={<AboutOncoTrials/>} />
           <Route path='/privacy-policy' element={<PrivacyPolicy/>} />
+          <Route path='/contact' element={<ContactPage/>} />
           {/* Patient only routes */}
           <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
             <Route path='/patient-dashboard' element={<PatientDashboard />} />
