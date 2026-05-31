@@ -14,10 +14,18 @@ const supabase = require('../db/supabaseClient');
 const EligibilityMatcher = require('./eligibilityMatcher');
 const { explainOnePair } = require('./llm');
 const { confidenceToScore } = require('./llm/prompts/trialMatchExplainer');
+const { getAllTrialsCached, warmAllTrialsCache } = require('./trialsCache');
 
 const PREFILTER_LIMIT  = 500;     // hard cap — Stage 2 chews JS on this set
 const TOP_RANK_LIMIT   = 20;      // returned to caller
 const AI_EXPLAIN_LIMIT = 10;      // top N that get the AI rationale (cost control)
+
+// PostgREST encodes `.in('id', [uuid1, uuid2, ...])` as a query-string filter
+// `id=in.("uuid1","uuid2",...)`. With ~39 chars per quoted UUID + comma, 500
+// ids puts the request URL over Supabase's ~16KB HTTP header limit and the
+// API rejects it (`UND_ERR_HEADERS_OVERFLOW`). Chunk to ~200 ids per round-
+// trip, run in parallel, flatten the result.
+const IN_QUERY_CHUNK_SIZE = 200;
 
 // Final relevance score weighting: rule matcher is the primary signal, AI
 // confidence is a modifier. See plan §5.3.
@@ -123,7 +131,17 @@ async function rankTrialsForPatient(patient, opts = {}) {
         }
     }
 
-    const results = top.map(({ trial, match, ai }, idx) => formatRankedResult(trial, match, idx, ai));
+    // Filter out trials the AI explicitly tagged as not disease-relevant.
+    // `disease_match === 'no'` means the AI judged the trial studies a
+    // different disease entirely; we drop those rather than rank them.
+    // Trials past AI_EXPLAIN_LIMIT keep `ai === undefined` and pass through.
+    const aiRelevant = top.filter(({ ai }) => !ai || !ai.ok || ai.explanation?.disease_match !== 'no');
+
+    // Re-rank: now that disease-irrelevant trials are gone, rebuild the
+    // index so #1 is the best of what's left.
+    const finalTop = aiRelevant.slice(0, limit);
+
+    const results = finalTop.map(({ trial, match, ai }, idx) => formatRankedResult(trial, match, idx, ai));
 
     return {
         candidates_considered: candidates.length,
@@ -133,52 +151,124 @@ async function rankTrialsForPatient(patient, opts = {}) {
     };
 }
 
-// ---- Stage 1: SQL prefilter ----------------------------------------------
+// ---- Stage 1: Redis-cache prefilter (Supabase fallback) ------------------
+//
+// Why cache-first: the `trials` table has no trigram index on title/summary
+// (yet). With a tight keyword like "prostate", PostgreSQL has to seq-scan
+// the whole table to evaluate `title ILIKE '%prostate%' OR summary ILIKE
+// '%prostate%' LIMIT 500`, which blows past the statement timeout. The
+// chunked Redis cache holds the full corpus in JS-readable form — we filter
+// in-memory (sub-second on 24K rows) then hit Supabase once by primary key
+// to pull the Stage 2 columns the cache doesn't carry.
+//
+// Falls back to a direct Supabase query only when the cache is cold AND
+// can't be warmed; that path may still time out, in which case the operator
+// needs to run the importer or add a trigram index (see SQL in PR notes).
 
 async function stage1Prefilter(patient) {
+    let cached = await getAllTrialsCached();
+    if (!cached?.data) {
+        console.warn('[trialRanker] stage1 cache cold; warming on-demand');
+        try {
+            await warmAllTrialsCache();
+            cached = await getAllTrialsCached();
+        } catch (warmErr) {
+            console.error('[trialRanker] cache warm failed; falling back to Supabase ILIKE:', warmErr?.message || warmErr);
+        }
+    }
+
+    if (cached?.data) {
+        return stage1FromCache(patient, cached.data);
+    }
+    return stage1FromSupabase(patient);
+}
+
+// In-memory filter over the cached corpus, then a single id-keyed Supabase
+// fetch to pull the Stage-2 columns the cache doesn't store
+// (eligibility_summary_clinician_json, study_description).
+async function stage1FromCache(patient, allTrials) {
+    const gender = patient?.gender ? String(patient.gender).trim().toUpperCase() : null;
+    const keywords = patient?.cancerType
+        ? EligibilityMatcher.extractCancerKeywords(patient.cancerType)
+        : [];
+
+    console.log(`[trialRanker] stage1 cancer keywords: [${keywords.join(', ')}]`);
+
+    const matchedIds = [];
+    for (const trial of allTrials) {
+        if (!OPEN_STATUSES.includes(trial.status)) continue;
+
+        if (gender && trial.sex && trial.sex !== 'ALL' && trial.sex !== gender) continue;
+
+        if (keywords.length > 0) {
+            const conditionsText = Array.isArray(trial.conditions) ? trial.conditions.join(' ') : '';
+            const haystack = `${trial.title || ''} ${trial.summary || ''} ${conditionsText}`.toLowerCase();
+            if (!keywords.some((kw) => haystack.includes(kw))) continue;
+        }
+
+        matchedIds.push(trial.id);
+        if (matchedIds.length >= PREFILTER_LIMIT) break;
+    }
+
+    console.log(`[trialRanker] stage1 cache-filtered ${matchedIds.length}/${allTrials.length} trials`);
+    if (matchedIds.length === 0) return [];
+
+    // Fetch full Stage 2 columns by primary key — uses the id index, fast.
+    // Chunked because PostgREST puts the id list in the URL and 500 UUIDs
+    // overflow Supabase's 16KB header limit.
+    return fetchTrialsByIdsChunked(matchedIds);
+}
+
+async function fetchTrialsByIdsChunked(ids) {
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += IN_QUERY_CHUNK_SIZE) {
+        chunks.push(ids.slice(i, i + IN_QUERY_CHUNK_SIZE));
+    }
+
+    const pages = await Promise.all(chunks.map(async (chunkIds) => {
+        const { data, error } = await supabase
+            .from('trials')
+            .select(RANK_COLUMNS)
+            .in('id', chunkIds);
+        if (error) {
+            const err = new Error(`Stage 1 fetch-by-ids failed: ${error.message}`);
+            err.cause = error;
+            throw err;
+        }
+        return data ?? [];
+    }));
+
+    return pages.flat();
+}
+
+// Direct Supabase prefilter — kept as a fallback for when the Redis cache
+// is unreachable. Slow on tight keywords until a trigram index exists.
+async function stage1FromSupabase(patient) {
     let query = supabase
         .from('trials')
         .select(RANK_COLUMNS)
         .in('status', OPEN_STATUSES)
         .limit(PREFILTER_LIMIT);
 
-    // Sex filter: include trials that don't restrict, plus the patient's sex.
-    // Trial sex is stored uppercase ('ALL' / 'MALE' / 'FEMALE') by the importer.
-    // Patient gender from FHIR is lowercase ('male' / 'female'); uppercase it
-    // so .eq.<gender> matches exactly.
     if (patient?.gender) {
         const g = String(patient.gender).trim().toUpperCase();
         query = query.or(`sex.is.null,sex.eq.ALL,sex.eq.${g}`);
     }
 
-    // Cancer type matching — uses EligibilityMatcher.extractCancerKeywords so
-    // Stage 1 and Stage 2 agree on what "related" means.
-    //
-    // Why keywords and not the whole string: FHIR sources (Synthea, real EPIC)
-    // express diagnoses in SNOMED terms — "Neoplasm of prostate", "Malignant
-    // neoplasm of breast (disorder)". ClinicalTrials.gov uses lay terms —
-    // "Prostate Cancer", "HER2+ Breast Cancer". Exact-phrase ILIKE finds
-    // nothing across that gap; keyword OR matching does.
     if (patient?.cancerType) {
         const keywords = EligibilityMatcher.extractCancerKeywords(patient.cancerType);
         if (keywords.length > 0) {
-            // Build one OR clause per keyword × per searchable column.
             const orClauses = [];
             for (const kw of keywords) {
-                // PostgREST .or() requires comma-separated key.op.value tuples.
-                // ilike values are URL-safe except for commas and parens; our
-                // extractor already stripped those.
                 orClauses.push(`title.ilike.%${kw}%`);
                 orClauses.push(`summary.ilike.%${kw}%`);
             }
             query = query.or(orClauses.join(','));
-            console.log(`[trialRanker] stage1 cancer keywords: [${keywords.join(', ')}]`);
+            console.log(`[trialRanker] stage1 cancer keywords: [${keywords.join(', ')}] (supabase fallback)`);
         } else {
-            // Fallback: no keywords survived stopword filtering. Use the raw
-            // string so the query is at least narrowed *somehow*.
             const safe = String(patient.cancerType).trim().replace(/[,()]/g, ' ');
             query = query.or(`title.ilike.%${safe}%,summary.ilike.%${safe}%`);
-            console.log(`[trialRanker] stage1 cancer keywords: <none — using raw "${safe}">`);
+            console.log(`[trialRanker] stage1 cancer keywords: <none — using raw "${safe}"> (supabase fallback)`);
         }
     }
 
@@ -189,7 +279,7 @@ async function stage1Prefilter(patient) {
         throw err;
     }
 
-    console.log(`[trialRanker] stage1 returned ${data?.length ?? 0} candidates for patient (cancerType="${patient?.cancerType ?? 'unknown'}", gender="${patient?.gender ?? 'unknown'}")`);
+    console.log(`[trialRanker] stage1 supabase-fallback returned ${data?.length ?? 0} candidates`);
     return data ?? [];
 }
 
@@ -205,11 +295,28 @@ function formatRankedResult(trial, match, index, aiResult) {
         ? Math.round(RULE_WEIGHT * match.score + AI_WEIGHT * confidenceToScore(aiExp.confidence))
         : match.score;
 
+    // Reconcile the rule-based status with what the AI saw. The rule matcher
+    // can't read free-text exclusion criteria; the AI can. If the AI flagged
+    // exclusions or rated disease match only "partial", downgrade so the
+    // result badge doesn't claim Eligible when the AI thinks otherwise.
+    let effectiveStatus = match.status;
+    if (aiOk) {
+        if (aiExp.disease_match === 'partial' && effectiveStatus === EligibilityMatcher.STATUS.LIKELY_ELIGIBLE) {
+            effectiveStatus = EligibilityMatcher.STATUS.NEEDS_REVIEW;
+        }
+        if (aiExp.relevant_exclusions.length > 0
+            && (effectiveStatus === EligibilityMatcher.STATUS.ELIGIBLE
+                || effectiveStatus === EligibilityMatcher.STATUS.LIKELY_ELIGIBLE)) {
+            effectiveStatus = EligibilityMatcher.STATUS.NEEDS_REVIEW;
+        }
+    }
+
     return {
         rank:            index + 1,
         relevance_score: relevanceScore,
         rule_score:      match.score,
-        rule_status:     match.status,
+        rule_status:     effectiveStatus,
+        ai_disease_match: aiOk ? aiExp.disease_match : null,
         ai_confidence:   aiOk ? aiExp.confidence : null,
         ai_fallback_reason: aiResult && !aiResult.ok ? aiResult.reason : null,
         nct_id:          trial.nct_id,

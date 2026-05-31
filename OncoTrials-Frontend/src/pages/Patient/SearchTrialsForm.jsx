@@ -286,7 +286,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
 
             {/* Actions */}
             <div className="flex flex-row font-sm md:font-md items-center justify-center space-x-5">
-                <FormButton text={isLoading ? 'Loading…' : 'Search Trials'} type='submit' onClick={handleSearch} disabled={isLoading} />
+                <FormButton text={isLoading ? 'Loading Trials...' : 'Search Trials'} type='submit' onClick={handleSearch} disabled={isLoading} />
                 <FormButton text="Reset" type='button' onClick={handleReset} />
             </div>
         </>

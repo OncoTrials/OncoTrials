@@ -252,6 +252,7 @@ class EligibilityMatcher {
     // Used by both the Stage 1 SQL prefilter and the Stage 2 diagnosis check
     // so the two stages agree on what counts as "related."
     static CANCER_STOPWORDS = new Set([
+        // Generic disease / tumour / cell terms
         'neoplasm', 'neoplasms', 'neoplastic',
         'malignant', 'malignancy', 'benign',
         'tumor', 'tumour', 'tumors', 'tumours',
@@ -259,7 +260,28 @@ class EligibilityMatcher {
         'disorder', 'disease', 'diseases',
         'primary', 'secondary', 'recurrent',
         'cell', 'cells',
-        'of', 'the', 'a', 'an', 'and', 'or', 'with', 'in',
+
+        // Stage / severity / progression descriptors. These appear in nearly
+        // every oncology diagnosis and never discriminate disease on their own.
+        // Without these, "Stage IV" leaks "stage" + "iv" into the keyword list
+        // and Stage 1 SQL plus Stage 2 diagnosis check both substring-match
+        // those against unrelated trials (Alzheimer's "Stage IV", trials that
+        // mention "IV infusion", etc.) — see PR review #2026-05-30.
+        'stage', 'iii', 'vii', 'viii',
+        'metastatic', 'advanced', 'early', 'late', 'localized', 'locally',
+        'high', 'low', 'mid', 'grade', 'level', 'score',
+        'mild', 'moderate', 'severe',
+        'clinical', 'pathologic', 'pathological', 'histologic', 'histological',
+        'subtype', 'type', 'positive', 'negative', 'status', 'state',
+        'multiple', 'diffuse', 'focal', 'mixed', 'extensive', 'limited',
+
+        // Hematology subtype shorthand (kappa/lambda light chains, Ig isotypes,
+        // ISS staging) — not site/disease-discriminating.
+        'iss', 'igg', 'iga', 'igm', 'igd', 'ige', 'kappa', 'lambda',
+
+        // Articles / prepositions
+        'of', 'the', 'a', 'an', 'and', 'or', 'with', 'in', 'for', 'on', 'at',
+        'from', 'to', 'by', 'as', 'is', 'are', 'was', 'were', 'this', 'that',
     ]);
 
     static extractCancerKeywords(text) {
@@ -269,7 +291,12 @@ class EligibilityMatcher {
             .replace(/\([^)]*\)/g, ' ')             // strip parenthesized notes like "(disorder)"
             .replace(/[^a-z0-9+\-\s]/g, ' ')        // keep + and - (biomarkers like "HER2+")
             .split(/\s+/)
-            .filter((t) => t.length > 1 && !EligibilityMatcher.CANCER_STOPWORDS.has(t));
+            // Require ≥3 chars. Two-character tokens ("iv", "ii", "er", "pr")
+            // substring-match too aggressively against unrelated trial text
+            // (e.g. "iv" inside "intravenous", "Stage IV" of Alzheimer's, etc).
+            // All real biomarker tokens — alk, ret, met, her2, kras, egfr,
+            // braf, ros1, ntrk, pdgfra — are 3+ chars and survive this filter.
+            .filter((t) => t.length >= 3 && !EligibilityMatcher.CANCER_STOPWORDS.has(t));
     }
 
     static checkBiomarker(patient, trial, inclusionCriteria) {

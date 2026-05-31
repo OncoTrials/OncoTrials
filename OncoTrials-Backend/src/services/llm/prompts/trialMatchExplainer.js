@@ -22,6 +22,16 @@ const SYSTEM_PROMPT = [
     '- If the patient input lacks information needed to evaluate a criterion,',
     '  treat that criterion as unmet and explain what data would resolve it.',
     '- Keep `rationale` to 1-2 sentences, plain English, no marketing language.',
+    '',
+    'DISEASE-RELEVANCE GATE (critical):',
+    '- Set `disease_match` to "yes" only when the trial actually studies the',
+    '  patient\'s cancer (same organ/system, or a hematologic malignancy the',
+    '  patient has). A trial about Alzheimer\'s, asthma, HIV prevention, etc.',
+    '  is "no" — even if a keyword incidentally overlaps.',
+    '- Set "partial" when the trial targets a closely related cancer or a',
+    '  cross-disease indication that could plausibly include the patient.',
+    '- Set "no" when the trial is for an unrelated disease. The orchestrator',
+    '  will drop these from the results — do not soften the call to be polite.',
 ].join('\n');
 
 function buildUserPrompt(patient, trial) {
@@ -63,6 +73,7 @@ function buildUserPrompt(patient, trial) {
         '## Output schema (return ONLY this JSON object — no surrounding prose)',
         '```json',
         '{',
+        '  "disease_match": "yes" | "partial" | "no"  (see DISEASE-RELEVANCE GATE in system prompt),',
         '  "rationale": "string (1-2 sentences explaining why this trial fits or does not fit this patient)",',
         '  "matched_inclusion":   ["string (a specific inclusion criterion the patient appears to meet)"],',
         '  "unmet_inclusion":     ["string (a specific inclusion criterion the patient does not meet or has insufficient data for)"],',
@@ -75,6 +86,10 @@ function buildUserPrompt(patient, trial) {
 
 // Validate that the LLM returned a properly-shaped object. Reject anything
 // suspicious — we never want to render free-form model output as trusted UI.
+//
+// `disease_match` is treated as REQUIRED. If the model omits it we default to
+// "partial" so we don't accidentally drop trials based on a malformed response;
+// the orchestrator only filters on an explicit "no".
 function validateResponse(obj) {
     if (!obj || typeof obj !== 'object') return null;
     const ok =
@@ -85,8 +100,13 @@ function validateResponse(obj) {
         ['high', 'medium', 'low'].includes(obj.confidence);
     if (!ok) return null;
 
+    const diseaseMatch = ['yes', 'partial', 'no'].includes(obj.disease_match)
+        ? obj.disease_match
+        : 'partial';
+
     // Defensive caps to avoid runaway output reaching the client
     return {
+        disease_match:       diseaseMatch,
         rationale:           String(obj.rationale).slice(0, 600),
         matched_inclusion:   obj.matched_inclusion.slice(0, 10).map((s) => String(s).slice(0, 300)),
         unmet_inclusion:     obj.unmet_inclusion.slice(0, 10).map((s) => String(s).slice(0, 300)),

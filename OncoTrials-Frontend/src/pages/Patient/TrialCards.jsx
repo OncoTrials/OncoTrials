@@ -391,7 +391,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                                 <div>
                                                     <p className="font-medium text-green-700 mb-1">Criteria met</p>
                                                     <ul className="list-disc pl-4 space-y-0.5 text-green-800">
-                                                        {met_inclusion.map((r, i) => <li key={i}>{r}</li>)}
+                                                        {met_inclusion.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
                                             )}
@@ -399,7 +399,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                                 <div>
                                                     <p className="font-medium text-red-700 mb-1">Criteria not met</p>
                                                     <ul className="list-disc pl-4 space-y-0.5 text-red-800">
-                                                        {failed_inclusion.map((r, i) => <li key={i}>{r}</li>)}
+                                                        {failed_inclusion.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
                                             )}
@@ -407,7 +407,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                                 <div>
                                                     <p className="font-medium text-red-700 mb-1">Exclusion criteria triggered</p>
                                                     <ul className="list-disc pl-4 space-y-0.5 text-red-800">
-                                                        {triggered_exclusion.map((r, i) => <li key={i}>{r}</li>)}
+                                                        {triggered_exclusion.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
                                             )}
@@ -415,7 +415,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                                 <div>
                                                     <p className="font-medium text-gray-600 mb-1">Missing information</p>
                                                     <ul className="list-disc pl-4 space-y-0.5 text-gray-600">
-                                                        {missing_information.map((r, i) => <li key={i}>{r}</li>)}
+                                                        {missing_information.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
                                             )}
@@ -470,8 +470,8 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                 <div className="flex flex-col gap-2">
                                     <span className="text-sm font-medium text-gray-500">Conditions</span>
                                     <div className="flex flex-wrap gap-2">
-                                        {displayData.conditions.map((c, i) => (
-                                            <span key={i} className="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-100 rounded-lg text-xs font-medium">{c}</span>
+                                        {displayData.conditions.map((condition, idx) => (
+                                            <span key={idx} className="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-100 rounded-lg text-xs font-medium">{condition}</span>
                                         ))}
                                     </div>
                                 </div>
@@ -508,8 +508,8 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                                         <div key={index}>
                                                             <h4 className="font-semibold text-gray-900 mb-1">{title.replace(/-/g, '').trim()}</h4>
                                                             <ul className="list-disc pl-5 space-y-1">
-                                                                {lines.filter(line => line.trim().startsWith('-')).map((line, i) => (
-                                                                    <li key={i}>{line.replace('-', '').trim()}</li>
+                                                                {lines.filter(line => line.trim().startsWith('-')).map((line, lineIdx) => (
+                                                                    <li key={lineIdx}>{line.replace('-', '').trim()}</li>
                                                                 ))}
                                                             </ul>
                                                         </div>
@@ -566,9 +566,9 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                     ) : (
                                     <div className="flex flex-col gap-2">
                                         <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
-                                            {displayData.locations.map((loc, i) => (
+                                            {displayData.locations.map((loc, locIdx) => (
                                                 <div
-                                                    key={i}
+                                                    key={locIdx}
                                                     onClick={() => setSelectedLocation(loc)}
                                                     className={`flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer transition-colors ${
                                                         selectedLocation === loc ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-white border border-gray-100 shadow-sm hover:bg-gray-50'

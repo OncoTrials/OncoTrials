@@ -237,6 +237,18 @@ router.post('/', matchRateLimit, requireAuth, async (req, res) => {
             ai_provider:  ranked.ai_provider,
             ai_model:     ranked.ai_model,
             candidates_considered: ranked.candidates_considered,
+            // De-identified patient summary echoed back so the frontend can
+            // render a header card without making a second request. Same
+            // fields the AI explainer sees — no name, MRN, DOB, address.
+            patient: {
+                age:               patient.age ?? null,
+                gender:            patient.gender ?? null,
+                cancerType:        patient.cancerType ?? null,
+                cancerStage:       patient.cancerStage ?? null,
+                mutationBiomarker: patient.mutationBiomarker ?? null,
+                ecog:              patient.ecog ?? null,
+                lineOfTreatment:   patient.lineOfTreatment ?? null,
+            },
             results:      ranked.results,
             cached:       false,
         };
