@@ -3,8 +3,10 @@ import { motion } from "framer-motion";
 import FormButton from "../components/buttons/FormButton.jsx"
 import HomeNavBar from "../components/layout/HomeNavBar.jsx";
 import PageFooter from "../components/layout/PageFooter.jsx";
+import { useNavigate } from "react-router";
 
 export default function AboutOncoTrials() {
+    const navigate = useNavigate();
     return (
        
         <div className=" animate-fade-down min-h-screen bg-gradient-to-tl from-blue-100 via-white to-indigo-100 text-gray-900">
@@ -199,7 +201,7 @@ export default function AboutOncoTrials() {
                             See how TrialsOnco fits directly into your workflow and helps
                             identify the best options for every patient.
                         </p>
-                        <FormButton text={'Schedule a Demo'}  className="bg-white text-blue-700 hover:bg-gray-100">
+                        <FormButton text={'Schedule a Demo'} onClick={() => navigate('/contact')}  className="bg-white text-blue-700 hover:bg-gray-100">
                             
                         </FormButton>
                     </motion.div>

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import PatientNavBar from '../../components/layout/PatientNavBar'
+import React, {useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../../utils/SupabaseClient'
 import { useQuery } from '@tanstack/react-query'
@@ -9,25 +8,30 @@ import HomeNavBar from '../../components/layout/HomeNavBar'
 import PageFooter from '../../components/layout/PageFooter'
 import { getAllTrials } from '../../api/trialsApi'
 
+<<<<<<< HEAD
 const getUserMetadata = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   return user?.user_metadata || null;
+=======
+const getAllTrials = async () => {
+  const { data, error } = await supabase
+    .from('trials')
+    .select('*');
+
+  if (error) throw error;
+  return data;
+>>>>>>> 10f5b10826f2f41ea5ac4b1296f5bf1cd1a8df0c
 }
 
 
 
+
+
 function PatientDashboard() {
-  const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(true);
 
-  const { data: response, isLoading, isError } = useQuery({
-    queryKey: ['getUserMetadata'],
-    queryFn: getUserMetadata,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
 
+<<<<<<< HEAD
   const { data: trials, isLoading: trialsLoading, isError: trialsError, refetch: refetchTrials } = useQuery({
     queryKey: ['getAllTrials'],
     queryFn: getAllTrials,
@@ -51,6 +55,19 @@ function PatientDashboard() {
     if (trialsLoading) { setBrowseAllPending(true); return; }
     setFilteredTrials(trials ?? []);
   };
+=======
+  const { data: trials } = useQuery({
+    queryKey: ['getAllTrials'],
+    queryFn: getAllTrials,
+    staleTime: 5 * 60 * 1000,
+    retry: true,
+    refetchOnWindowFocus: false,
+  });
+
+
+  const [filteredTrials, setFilteredTrials] = useState([]);
+  const displayedTrials = filteredTrials ?? trials;
+>>>>>>> 10f5b10826f2f41ea5ac4b1296f5bf1cd1a8df0c
 
   return (
     <>

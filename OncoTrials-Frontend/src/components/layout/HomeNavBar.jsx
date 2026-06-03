@@ -24,7 +24,7 @@ function HomeNavBar() {
                     <NavbarLink href="/" active className='hover:underline underline-offset-2 !text-black md:text-lg'>
                         Home
                     </NavbarLink>
-                    <NavbarLink href="/about" className='hover:underline underline-offset-2 !text-black md:text-lg'>About</NavbarLink>
+                    <NavbarLink href="/#about" className='hover:underline underline-offset-2 !text-black md:text-lg'>About</NavbarLink>
                     <NavbarLink href="/trials" className='hover:underline underline-offset-2 !text-black md:text-lg'>Trials</NavbarLink>
                 </NavbarCollapse>
             </Navbar>
