@@ -1,4 +1,4 @@
-import React, {useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../../utils/SupabaseClient'
 import { useQuery } from '@tanstack/react-query'
@@ -12,19 +12,6 @@ const getUserMetadata = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   return user?.user_metadata || null;
 }
-
-const getAllTrials = async () => {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('*');
-
-  if (error) throw error;
-  return data;
-}
-
-
-
-
 
 function PatientDashboard() {
   const [showFilters, setShowFilters] = useState(true);
