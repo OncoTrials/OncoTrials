@@ -34,12 +34,9 @@ app.use(express.json());
 
 app.use('/trials', require('./routes/trials'));
 app.use('/organizations', require('./routes/organizations'));
-<<<<<<< HEAD
 app.use('/api/v1/match', require('./routes/api/v1/match'));
 app.use('/fhir/launch',   require('./routes/fhir/launch'));
 app.use('/fhir/callback', require('./routes/fhir/callback'));
-=======
->>>>>>> db2ce9497b9a9b3e8478031bc6e9802babf8c012
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
