@@ -1,8 +1,11 @@
 
-import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLink, FooterLinkGroup } from "flowbite-react";
+import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLinkGroup } from "flowbite-react";
+import {HashLink} from "react-router-hash-link";
 
 const currentYear = new Date().getFullYear();
 function PageFooter() {
+    const currentYear = new Date().getFullYear();
+
     return (
         <Footer container className="mt-10 !bg-transparent">
             <div className="w-full text-center">
@@ -14,10 +17,10 @@ function PageFooter() {
                         name="TrialsOnco™"
                         className="[&>span]:!text-black"
                     />
-                    <FooterLinkGroup className="!text-black">
-                        <FooterLink href="/about" className="hover:underline underline-offset-2">About</FooterLink>
-                        <FooterLink href="/privacy-policy" className="hover:underline underline-offset-2">Privacy Policy</FooterLink>
-                        <FooterLink href="/contact" className="hover:underline underline-offset-2">Contact</FooterLink>
+                    <FooterLinkGroup className="!text-black space-x-3">
+                        <HashLink smooth to="/#about" className="hover:underline underline-offset-2">About</HashLink>
+                        <HashLink to="/privacy-policy" className="hover:underline underline-offset-2">Privacy Policy</HashLink>
+                        <HashLink smooth to="/#contact" className="hover:underline underline-offset-2">Contact</HashLink>
                     </FooterLinkGroup>
                 </div>
                 <FooterDivider />

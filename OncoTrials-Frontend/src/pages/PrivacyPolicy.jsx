@@ -61,7 +61,7 @@ const PrivacyPolicy = () => {
 
                 <Section title="11. Contact Us">
                     TrialsOnco Team <br />
-                    Email: [Insert Email] <br />
+                    Email: contact@trialsonco.com <br />
                 </Section>
 
                 <Section title="12. Disclaimer">

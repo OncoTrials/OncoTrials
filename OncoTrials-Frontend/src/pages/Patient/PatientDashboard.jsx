@@ -14,16 +14,8 @@ const getUserMetadata = async () => {
 }
 
 function PatientDashboard() {
-  const navigate = useNavigate();
   const [showFilters, setShowFilters] = useState(true);
 
-  const { data: response, isLoading, isError } = useQuery({
-    queryKey: ['getUserMetadata'],
-    queryFn: getUserMetadata,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
 
   // Streaming trials state
   const [trials, setTrials] = useState(null);   // null = not yet loaded
