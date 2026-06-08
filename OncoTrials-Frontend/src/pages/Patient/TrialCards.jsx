@@ -1,8 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
+import LocationFilter from '../../components/filters/LocationFilter';
 import { getTrialById } from '../../api/trialsApi';
+import { filterTrialsByDistance } from '../../geo';
 
-function TrialCards({ trials, isLoading, trialsError = false, browseAllPending = false, onShowAll, onRetry }) {
+// Skeleton Card
+function SkeletonCard() {
+    return (
+        <div className="relative flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+            <div className="h-1.5 w-full bg-gray-200" />
+            <div className="flex flex-col flex-1 p-5 gap-3">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4" />
+                        <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    </div>
+                    <div className="h-5 w-20 bg-gray-200 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                    <div className="h-3 bg-gray-100 rounded w-full" />
+                    <div className="h-3 bg-gray-100 rounded w-5/6" />
+                    <div className="h-3 bg-gray-100 rounded w-2/3" />
+                </div>
+                <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+                    <div className="h-6 w-24 bg-gray-200 rounded-lg" />
+                    <div className="h-8 w-24 bg-gray-200 rounded-lg" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// `viewResetKey` is a number supplied by the parent. It changes every time the
+// user starts a new view of the results (runs a sidebar search, resets the
+// form, or clicks "Browse All"). When it changes we clear the in-card keyword
+// search and jump back to the first page so each new view starts clean.
+function TrialCards({ trials, isLoading, trialsError = false, browseAllPending = false, onShowAll, onRetry, streamingTotal = 0, streamDone = false, viewResetKey = 0 }) {
     const [modalData, setModalData] = useState(null);       // partial data (list columns)
     const [fullModalData, setFullModalData] = useState(null); // full data (detail fetch)
     const [modalDetailLoading, setModalDetailLoading] = useState(false);
@@ -10,16 +43,128 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [pageInput, setPageInput] = useState('1');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('newest');
+    const [showSortDropdown, setShowSortDropdown] = useState(false);
+    // Active distance filter from the toolbar LocationFilter, or null. Applies to
+    // whatever list is shown (browse-all or eligibility search results), so it
+    // works the same in both. { lat, lng, formattedAddress, radius, unit }
+    const [locationFilter, setLocationFilter] = useState(null);
 
     // Sync input with actual page when page changes via Next/Prev buttons
     useEffect(() => {
         setPageInput(currentPage.toString());
     }, [currentPage]);
 
+    // Search + Sort
+    const sortOptions = [
+        { value: 'newest', label: 'Newest First' },
+        { value: 'oldest', label: 'Oldest First' },
+        { value: 'ending-soon', label: 'Ending Soonest' },
+        { value: 'most-locations', label: 'Most Locations' },
+        { value: 'az', label: 'A → Z' },
+        { value: 'za', label: 'Z → A' },
+    ];
+
+    const processedTrials = useMemo(() => {
+        if (!trials || trials.length === 0) return trials;
+
+        let result = [...trials];
+
+        // Location: keep only trials within the chosen radius of the origin.
+        // Applies regardless of how the list was produced (browse-all or search).
+        if (locationFilter) {
+            result = filterTrialsByDistance(
+                result,
+                locationFilter.lat,
+                locationFilter.lng,
+                locationFilter.radius,
+                locationFilter.unit,
+            );
+        }
+
+        // Keyword search
+        if (searchQuery.trim()) {
+            const terms = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+            // Score each trial: +2 for each matched term, higher = better
+            const scored = result.map(trial => {
+                const searchable = [
+                    trial.title,
+                    trial.nct_id,
+                    trial.sponsor,
+                    trial.summary,
+                    trial.eligibility_criteria_summary,
+                    trial.location_city,
+                    trial.location_state,
+                    ...(trial.conditions || []),
+                ].filter(Boolean).join(' ').toLowerCase();
+
+                const matchCount = terms.filter(term => searchable.includes(term)).length;
+                return { trial, matchCount };
+            });
+
+            // Only keep trials that match at least one term
+            result = scored
+                .filter(s => s.matchCount > 0)
+                .sort((a, b) => b.matchCount - a.matchCount) // full matches first
+                .map(s => s.trial);
+        }
+
+        // Sort
+        // Only apply sort if no search query (search results are already ranked by relevance)
+        if (!searchQuery.trim()) {
+            switch (sortBy) {
+                case 'newest':
+                    result.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+                    break;
+                case 'oldest':
+                    result.sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+                    break;
+                case 'ending-soon':
+                    result.sort((a, b) => {
+                        const dateA = a.completion_date || a.primary_completion_date || '9999';
+                        const dateB = b.completion_date || b.primary_completion_date || '9999';
+                        return String(dateA).localeCompare(String(dateB));
+                    });
+                    break;
+                case 'most-locations':
+                    // Trials with location_city set get priority; this is a proxy for "has location data"
+                    result.sort((a, b) => {
+                        const aLoc = a.location_city ? 1 : 0;
+                        const bLoc = b.location_city ? 1 : 0;
+                        return bLoc - aLoc;
+                    });
+                    break;
+                case 'az':
+                    result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+                    break;
+                case 'za':
+                    result.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+                    break;
+            }
+        }
+
+        return result;
+    }, [trials, searchQuery, sortBy, locationFilter]);
+
+    // Reset page when search/sort/location changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, sortBy, locationFilter]);
+
+    // When the parent signals a brand-new results view (search / reset / browse
+    // all), clear the keyword search box and return to the first page. Without
+    // this, e.g. clicking Reset then Browse All would keep the old typed query
+    // and leave the user stranded on whatever page they were viewing before.
+    useEffect(() => {
+        setSearchQuery('');
+        setCurrentPage(1);
+    }, [viewResetKey]);
+
     const trialsPerPage = 12;
-    const totalPages = Math.ceil((trials?.length ?? 0) / trialsPerPage);
+    const totalPages = Math.ceil((processedTrials?.length ?? 0) / trialsPerPage);
     const startIndex = (currentPage - 1) * trialsPerPage;
-    const paginatedData = trials?.slice(startIndex, startIndex + trialsPerPage) ?? [];
+    const paginatedData = processedTrials?.slice(startIndex, startIndex + trialsPerPage) ?? [];
 
     const handlePreviousPage = () => { if (currentPage > 1) setCurrentPage(currentPage - 1); };
     const handleNextPage    = () => { if (currentPage < totalPages) setCurrentPage(currentPage + 1); };
@@ -100,7 +245,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
     const getMatchStyle = (match) => {
         switch (match?.status) {
             case 'likely_eligible': return { bar: 'bg-green-400',  badge: 'bg-green-100 text-green-700 border-green-200',  text: 'Likely Eligible' };
-            case 'eligible':        return { bar: 'bg-teal-400',   badge: 'bg-teal-100 text-teal-700 border-teal-200',     text: 'Eligible' };
+            case 'eligible':        return { bar: 'bg-green-400',  badge: 'bg-green-100 text-green-700 border-green-200',  text: 'Eligible' };
             case 'needs_review':    return { bar: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  text: 'Needs Review' };
             case 'not_eligible':    return { bar: 'bg-red-400',    badge: 'bg-red-100 text-red-700 border-red-200',        text: 'Not Eligible' };
             default:                return { bar: 'bg-sky-200',    badge: '',                                              text: '' };
@@ -140,8 +285,16 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                 );
             }
             return (
-                <div className="flex items-center justify-center min-h-[750px]">
-                    <p className="text-lg text-gray-400 animate-pulse">Loading trials…</p>
+                <div className="p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                            Loading trials…
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
+                    </div>
                 </div>
             );
         }
@@ -209,6 +362,22 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
 
     // Search returned no matches
     if (trials.length === 0) {
+        if (!streamDone) {
+            return (
+                <div className="p-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                            Loading trials…
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="flex flex-col items-center justify-center min-h-[750px] gap-3 text-center px-8">
                 <p className="text-lg font-medium text-gray-600">No trials matched your search criteria.</p>
@@ -217,10 +386,101 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
         );
     }
 
-    // ── Results ───────────────────────────────────────────────────────────────
+    // Results
     return (
         <div className="p-4 flex flex-col gap-4">
-            {/* Card Grid */}
+            {/* Search + Sort toolbar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                {/* Result count + streaming indicator */}
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="font-medium">
+                        {processedTrials?.length?.toLocaleString() ?? 0} trial{(processedTrials?.length ?? 0) !== 1 ? 's' : ''}
+                    </span>
+                    {!streamDone && streamingTotal > 0 && (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                            Loading more…
+                        </span>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Search box */}
+                    <div className="relative flex-1 sm:flex-none sm:w-64">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search trials…"
+                            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700
+                                focus:ring-2 focus:ring-sky-100 focus:border-sky-400 outline-none transition-all duration-200
+                                placeholder:text-gray-400"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Location filter (applies to browse-all and search results alike) */}
+                    <LocationFilter onChange={setLocationFilter} />
+
+                    {/* Sort dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowSortDropdown(prev => !prev)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700
+                                hover:border-sky-300 hover:bg-sky-50 transition-all duration-200 whitespace-nowrap"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                            </svg>
+                            {sortOptions.find(o => o.value === sortBy)?.label || 'Sort'}
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                        {showSortDropdown && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
+                                {sortOptions.map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => { setSortBy(opt.value); setShowSortDropdown(false); }}
+                                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                            sortBy === opt.value
+                                                ? 'bg-sky-50 text-sky-700 font-medium'
+                                                : 'text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Card grid, or an empty-state when the active filters match nothing */}
+            {processedTrials.length === 0 ? (
+                <div className="flex flex-col items-center justify-center min-h-[550px] gap-2 text-center px-8">
+                    <p className="text-base font-medium text-gray-600">No trials match your current filters.</p>
+                    <p className="text-sm text-gray-400">
+                        {locationFilter
+                            ? `No trials within ${locationFilter.radius} ${locationFilter.unit === 'km' ? 'km' : 'mi'} of ${locationFilter.formattedAddress}. Try a larger radius or clearing the location.`
+                            : 'Try adjusting your search keywords.'}
+                    </p>
+                </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[550px] content-start">
                 {paginatedData.map((trial) => (
                     <div
@@ -273,6 +533,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                     </div>
                 ))}
             </div>
+            )}
 
             {/* Pagination */}
             <div className="flex justify-between items-center pt-2 border-t border-gray-100 gap-2">
@@ -386,7 +647,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                                 <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${style.badge}`}>{style.text}</span>
                                             </div>
                                         </div>
-                                        <div className="space-y-2 text-xs">
+                                        <div className="space-y-2 text-xs text-gray-900">
                                             {met_inclusion.length > 0 && (
                                                 <div>
                                                     <p className="font-medium text-green-700 mb-1">Criteria met</p>

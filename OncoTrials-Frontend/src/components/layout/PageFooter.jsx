@@ -10,8 +10,8 @@ function PageFooter() {
                     <FooterBrand
                         href="/"
                         src={"/TrialsOnco.png"}
-                        alt="OncoTrials Logo"
-                        name="OncoTrials™"
+                        alt="TrialsOnco Logo"
+                        name="TrialsOnco™"
                         className="[&>span]:!text-black"
                     />
                     <FooterLinkGroup className="!text-black">

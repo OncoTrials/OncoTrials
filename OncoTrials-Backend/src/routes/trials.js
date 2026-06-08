@@ -4,6 +4,8 @@ const supabase = require('../db/supabaseClient');
 const { redis } = require('../db/redisClient');
 const {
     LIST_COLUMNS,
+    ALL_CHUNK_KEY_PREFIX,
+    ALL_META_KEY,
     getCacheVersion,
     bumpCacheVersion,
     getAllTrialsCached,
@@ -71,6 +73,70 @@ router.get('/', async (req, res) => {
     await setCached(cacheKey, payload);
     res.json(payload);
 });
+
+// GET /trials/stream — stream trials chunk-by-chunk as NDJSON.
+// Each line is a JSON object: { chunk: <index>, data: [...], total: <number>, done: <boolean> }
+// Frontend can begin rendering after the first chunk arrives.
+router.get('/stream', async (req, res) => {
+    try {
+        const meta = await redis.get(ALL_META_KEY);
+        if (!meta || typeof meta.chunkCount !== 'number') {
+            // Cold cache — fall back to regular endpoint behavior
+            console.log('[trials/stream] cache cold, warming...');
+            await warmAllTrialsCache();
+            const freshMeta = await redis.get(ALL_META_KEY);
+            if (!freshMeta) {
+                return res.status(500).json({ error: 'Failed to warm trial cache' });
+            }
+            return streamChunks(res, freshMeta);
+        }
+        return streamChunks(res, meta);
+    } catch (err) {
+        console.error('[trials/stream] error:', err);
+        if (!res.headersSent) {
+            return res.status(500).json({ error: 'Stream failed' });
+        }
+        res.end();
+    }
+});
+
+// Streams the cached trials to the client as NDJSON ("newline-delimited JSON"):
+// one JSON object per line, one line per Redis chunk. Writing line-by-line (and
+// flushing after each) lets the browser start rendering the first batch of
+// trials before the rest have been sent.
+//
+//   res       — the Express response we write the stream to.
+//   cacheMeta — the cache summary read from Redis: how many chunks exist
+//               (chunkCount) and how many trials in total (totalCount).
+async function streamChunks(res, cacheMeta) {
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Total-Chunks', String(cacheMeta.chunkCount));
+    res.setHeader('X-Total-Trials', String(cacheMeta.totalCount));
+
+    for (let chunkIndex = 0; chunkIndex < cacheMeta.chunkCount; chunkIndex++) {
+        // Each Redis key holds one batch (~500 trials) of the full list.
+        const chunkTrials = await redis.get(`${ALL_CHUNK_KEY_PREFIX}${chunkIndex}`);
+        const isFinalChunk = chunkIndex === cacheMeta.chunkCount - 1;
+
+        const ndjsonLine = JSON.stringify({
+            chunk: chunkIndex,
+            data: chunkTrials || [],
+            total: cacheMeta.totalCount,
+            done: isFinalChunk,
+        });
+        res.write(ndjsonLine + '\n');
+
+        // The global compression() middleware buffers writes inside its gzip
+        // stream, so without an explicit flush the client would receive the
+        // whole response in one burst at res.end() — defeating the point of
+        // streaming. compression() adds res.flush() for exactly this; we guard
+        // with a type check in case the middleware isn't present.
+        if (typeof res.flush === 'function') res.flush();
+    }
+    res.end();
+}
 
 // Individual trial detail is also worth caching — most clicks open the same
 // few trials per session. Short TTL is fine since the heavy hitter is the

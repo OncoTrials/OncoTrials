@@ -19,7 +19,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
     const [errors, setErrors] = useState({});
     const [resultCount, setResultCount] = useState(null)
 
-    // ── Validation ────────────────────────────────────────────────────────────
+    // Validation
     const validate = () => {
         const next = {}
         if (!cancerType.trim()) next.cancerType = 'Cancer Type is required'
@@ -42,7 +42,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
         };
     };
 
-    // ── Filter logic ──────────────────────────────────────────────────────────
+    // Filter logic
     const handleSearch = () => {
         if (!validate()) return
         if (!trials?.length) return
@@ -117,7 +117,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
         onFilter(resultsWithMatch)
     }
 
-    // ── Reset — restore full list, clear all state ────────────────────────────
+    // Reset: restore full list, clear all state
     const handleReset = () => {
         setGender('')
         setAge('')
@@ -132,7 +132,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
         onFilter(null)
     }
 
-    // ── Shared input class ────────────────────────────────────────────────────
+    // Shared input class
     const inputCls =
         'text-sm w-full px-4 py-2 border rounded-lg shadow-sm transition duration-300 ease-in-out ' +
         'focus:-translate-y-1 focus:outline-blue-300 hover:shadow-lg hover:border-blue-300 bg-gray-100'
@@ -141,7 +141,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
     const labelCls = 'block text-gray-700 text-sm font-bold mb-2'
     const errorCls = 'text-red-500 text-xs mt-1'
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // Render
     return (
         <>
             {/* Info banner */}
