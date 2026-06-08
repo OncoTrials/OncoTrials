@@ -498,7 +498,7 @@ function TrialCards({ trials }) {
                                                         loading="lazy"
                                                         allowFullScreen
                                                         referrerPolicy="no-referrer-when-downgrade"
-                                                        src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_API_KEY}&q=${query}`}
+                                                        src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_API_KEY}&q=${encodeURIComponent(query)}`}
                                                     />
                                                     <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
                                                         📍 {selectedLocation.facility} —{" "}
