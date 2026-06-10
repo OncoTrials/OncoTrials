@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
 
-function TrialCards({ trials }) {
+function TrialCards({ trials, userData}) {
     const [modalData, setModalData] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedLocation, setSelectedLocation] = useState(
@@ -149,7 +149,7 @@ function TrialCards({ trials }) {
                                         : 'bg-gray-400'
                                 }`}
                         />
-
+                        {trial.organization === userData.organization_id}
                         <div className="flex flex-col flex-1 p-5 gap-4">
                             {/* Header row */}
                             <div className="flex items-start justify-between gap-2">

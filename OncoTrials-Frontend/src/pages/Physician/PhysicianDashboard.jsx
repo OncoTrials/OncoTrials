@@ -8,15 +8,15 @@ import PageFooter from '../../components/layout/PageFooter.jsx'
 
 const getUserMetadata = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-
-
     return user?.user_metadata || null;
 }
+
 
 const getAllTrials = async () => {
     const { data, error } = await supabase
         .from('trials')
-        .select('*');
+        .select('*')
+        .eq('title', 'TrialsOnco Test Trial');
 
     if (error) throw error;
     return data;
@@ -25,13 +25,15 @@ const getAllTrials = async () => {
 function PhysicianDashboard() {
     const [showFilters, setShowFilters] = useState(true);
 
-    const { data: response, isLoading, isError } = useQuery({
+    const { data: userData, isLoading, isError } = useQuery({
         queryKey: ['getUserMetadata'],
         queryFn: getUserMetadata,
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: false,
         refetchOnWindowFocus: false,
     });
+
+    console.log(userData);
 
     const { data: trials = [] } = useQuery({
         queryKey: ['getAllTrials'],
@@ -41,13 +43,15 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
+    console.log(trials);
+
 
     const [filteredTrials, setFilteredTrials] = useState([]);
 
 
     return (
         <>
-        <PhysicianNavbar user_email={response?.email} />
+        <PhysicianNavbar user_email={userData?.email} />
         <div className="flex flex-col lg:flex-row gap-4 px-3 mt-5 min-h-[650px]">
           {/* Mobile / desktop toggle */}
           <div className="w-full lg:hidden">
@@ -73,7 +77,7 @@ function PhysicianDashboard() {
   
           {/* Results */}
           <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
-            <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []} />
+            <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []} userData={userData} />
           </div>
         </div>
         <PageFooter/>
