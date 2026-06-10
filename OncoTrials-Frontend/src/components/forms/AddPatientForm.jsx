@@ -6,7 +6,6 @@ import supabase from '../../utils/SupabaseClient';
 // Supabase expects an array of objects or a single object matching column names.
 // pass 'patientData' directly, don't wrap it in another object unless you have a JSONB column named 'patientData'.
 const insertPatient = async ({ patientData, userId }) => {
-    console.log(patientData);
     const { data, error } = await supabase
         .from('patients')
         .insert([
@@ -94,7 +93,6 @@ function AddPatientForm({ isOpen, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const { data: { user } } = await supabase.auth.getUser();
-        console.log(formData);
         insertPatientMutation.mutate({ patientData: formData, userId: user.id });
     };
 
