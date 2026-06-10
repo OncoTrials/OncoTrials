@@ -61,13 +61,26 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
         { value: 'newest', label: 'Newest First' },
         { value: 'oldest', label: 'Oldest First' },
         { value: 'ending-soon', label: 'Ending Soonest' },
-        { value: 'most-locations', label: 'Most Locations' },
         { value: 'az', label: 'A → Z' },
         { value: 'za', label: 'Z → A' },
     ];
 
+    // Temporarily hide the in-toolbar filter controls (keyword search, location,
+    // sort) while keeping all of their state and logic intact. Flip to true to
+    // restore them. NOTE for when re-enabling: these should only act once the
+    // stream has finished (streamDone), otherwise they filter/sort against a
+    // partially-loaded list and the visible results keep changing as more
+    // batches arrive. The cleanest fix is to render this block only when
+    // `streamDone` is true (and/or skip filtering in processedTrials until then).
+    const FILTERS_ENABLED = false;
+
     const processedTrials = useMemo(() => {
         if (!trials || trials.length === 0) return trials;
+
+        // Filters disabled: show the list as-is (its natural stream order), with
+        // no keyword/location/sort applied. Re-enabling FILTERS_ENABLED restores
+        // the full pipeline below.
+        if (!FILTERS_ENABLED) return trials;
 
         let result = [...trials];
 
@@ -110,29 +123,36 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                 .map(s => s.trial);
         }
 
-        // Sort
-        // Only apply sort if no search query (search results are already ranked by relevance)
+        // Sort (only when not searching — search results are ranked by relevance).
+        // We sort by the trial's real start_date, NOT created_at: created_at is the
+        // database import timestamp (nearly identical across the bulk import), so it
+        // gives no meaningful newest/oldest order. Trials with no start_date sort last.
         if (!searchQuery.trim()) {
+            const startDate = (trial) => trial.start_date || '';
             switch (sortBy) {
                 case 'newest':
-                    result.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+                    result.sort((a, b) => {
+                        const aDate = startDate(a), bDate = startDate(b);
+                        if (aDate === bDate) return 0;
+                        if (!aDate) return 1;   // missing dates go last
+                        if (!bDate) return -1;
+                        return bDate.localeCompare(aDate); // most recent first
+                    });
                     break;
                 case 'oldest':
-                    result.sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+                    result.sort((a, b) => {
+                        const aDate = startDate(a), bDate = startDate(b);
+                        if (aDate === bDate) return 0;
+                        if (!aDate) return 1;   // missing dates go last
+                        if (!bDate) return -1;
+                        return aDate.localeCompare(bDate); // earliest first
+                    });
                     break;
                 case 'ending-soon':
                     result.sort((a, b) => {
                         const dateA = a.completion_date || a.primary_completion_date || '9999';
                         const dateB = b.completion_date || b.primary_completion_date || '9999';
                         return String(dateA).localeCompare(String(dateB));
-                    });
-                    break;
-                case 'most-locations':
-                    // Trials with location_city set get priority; this is a proxy for "has location data"
-                    result.sort((a, b) => {
-                        const aLoc = a.location_city ? 1 : 0;
-                        const bLoc = b.location_city ? 1 : 0;
-                        return bLoc - aLoc;
                     });
                     break;
                 case 'az':
@@ -145,7 +165,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
         }
 
         return result;
-    }, [trials, searchQuery, sortBy, locationFilter]);
+    }, [trials, searchQuery, sortBy, locationFilter, FILTERS_ENABLED]);
 
     // Reset page when search/sort/location changes
     useEffect(() => {
@@ -159,6 +179,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
     useEffect(() => {
         setSearchQuery('');
         setCurrentPage(1);
+        setLocationFilter(null);
     }, [viewResetKey]);
 
     const trialsPerPage = 12;
@@ -404,6 +425,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                     )}
                 </div>
 
+                {FILTERS_ENABLED && (
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                     {/* Search box */}
                     <div className="relative flex-1 sm:flex-none sm:w-64">
@@ -431,8 +453,10 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                         )}
                     </div>
 
-                    {/* Location filter (applies to browse-all and search results alike) */}
-                    <LocationFilter onChange={setLocationFilter} />
+                    {/* Location filter (applies to browse-all and search results alike).
+                        The key remounts it on a view reset so its own input/UI clears
+                        too, matching the setLocationFilter(null) in the reset effect. */}
+                    <LocationFilter key={viewResetKey} onChange={setLocationFilter} />
 
                     {/* Sort dropdown */}
                     <div className="relative">
@@ -468,6 +492,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                         )}
                     </div>
                 </div>
+                )}
             </div>
 
             {/* Card grid, or an empty-state when the active filters match nothing */}
@@ -643,23 +668,22 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                         <div className="flex items-center justify-between gap-2">
                                             <span className="text-sm font-semibold">Eligibility Match</span>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs text-gray-500 font-medium">Score: {modalData.match.score}/100</span>
                                                 <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${style.badge}`}>{style.text}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-2 text-xs text-gray-900">
                                             {met_inclusion.length > 0 && (
                                                 <div>
-                                                    <p className="font-medium text-green-700 mb-1">Criteria met</p>
-                                                    <ul className="list-disc pl-4 space-y-0.5 text-green-800">
+                                                    <p className="font-medium text-black-700 mb-1">Criteria met</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-black-800">
                                                         {met_inclusion.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
                                             )}
                                             {failed_inclusion.length > 0 && (
                                                 <div>
-                                                    <p className="font-medium text-red-700 mb-1">Criteria not met</p>
-                                                    <ul className="list-disc pl-4 space-y-0.5 text-red-800">
+                                                    <p className="font-medium text-black-700 mb-1">Criteria not met</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-black-800">
                                                         {failed_inclusion.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
@@ -667,7 +691,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                             {triggered_exclusion.length > 0 && (
                                                 <div>
                                                     <p className="font-medium text-red-700 mb-1">Exclusion criteria triggered</p>
-                                                    <ul className="list-disc pl-4 space-y-0.5 text-red-800">
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-black-800">
                                                         {triggered_exclusion.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
@@ -675,7 +699,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                             {missing_information.length > 0 && (
                                                 <div>
                                                     <p className="font-medium text-gray-600 mb-1">Missing information</p>
-                                                    <ul className="list-disc pl-4 space-y-0.5 text-gray-600">
+                                                    <ul className="list-disc pl-4 space-y-0.5 text-black-600">
                                                         {missing_information.map((reason, idx) => <li key={idx}>{reason}</li>)}
                                                     </ul>
                                                 </div>
