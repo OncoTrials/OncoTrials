@@ -42,7 +42,6 @@ function TrialFilterForm({ trials, onFilter }) {
                 !filters.biomarker ||
                 trial.biomarker_criteria?.toLowerCase().includes(filters.biomarker.toLowerCase());
 
-            console.log(genderMatch,ageMatch,statusMatch,cancerTypeMatch,biomarkerMatch );
 
             return genderMatch && ageMatch && statusMatch && cancerTypeMatch && biomarkerMatch;
         });

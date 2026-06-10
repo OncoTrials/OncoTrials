@@ -168,7 +168,6 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
                 closed_at: form.closed_at || null,
                 created_by: user?.id ?? undefined,
             }
-            console.log(payload);
             const { error } = await supabase.from('trials').insert(payload)
             if (error) throw error
 
