@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import FormButton from '../../components/buttons/FormButton'
-import { InfoIcon, WarningIcon } from '@phosphor-icons/react'
+import { InfoIcon } from '@phosphor-icons/react'
 import EligibilityMatcher from '../../utils/EligibilityMatcher'
 
 // Normalize strings for comparison: lowercase, strip hyphens/underscores/spaces
 const normalize = (str) =>
     (str ?? '').toLowerCase().replace(/[-_\s]+/g, '')
 
-function SearchTrialsForm({ trials, onFilter }) {
+function SearchTrialsForm({ trials, onFilter, isLoading }) {
     const [gender, setGender] = useState('')
     const [age, setAge] = useState('')
     const [trialStatus, setTrialStatus] = useState('')
@@ -19,11 +19,10 @@ function SearchTrialsForm({ trials, onFilter }) {
     const [errors, setErrors] = useState({});
     const [resultCount, setResultCount] = useState(null)
 
-    // ── Validation ────────────────────────────────────────────────────────────
+    // Validation
     const validate = () => {
         const next = {}
         if (!cancerType.trim()) next.cancerType = 'Cancer Type is required'
-        // if (!mutationBiomarker.trim()) next.mutationBiomarker = 'Mutation / Biomarker is required'
         if (age && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 120)) {
             next.age = 'Enter a valid age (0–120)'
         }
@@ -43,9 +42,10 @@ function SearchTrialsForm({ trials, onFilter }) {
         };
     };
 
-    // ── Filter logic ──────────────────────────────────────────────────────────
+    // Filter logic
     const handleSearch = () => {
         if (!validate()) return
+        if (!trials?.length) return
 
         const patient = buildPatientObject()
         const numAge = age ? Number(age) : null
@@ -74,7 +74,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                 normalize(trial.status) === normalize(trialStatus)
 
             const conditions = trial.conditions ?? []
-
 
             const cancerTypeMatch =
                 !cancerType.trim() ||
@@ -118,7 +117,7 @@ function SearchTrialsForm({ trials, onFilter }) {
         onFilter(resultsWithMatch)
     }
 
-    // ── Reset — restore full list, clear all state ────────────────────────────
+    // Reset: restore full list, clear all state
     const handleReset = () => {
         setGender('')
         setAge('')
@@ -130,19 +129,19 @@ function SearchTrialsForm({ trials, onFilter }) {
         setLineOfTreatment('')
         setErrors({})
         setResultCount(null)
-        onFilter(null);
-        };
+        onFilter(null)
+    }
 
-    // ── Shared input class ────────────────────────────────────────────────────
+    // Shared input class
     const inputCls =
         'text-sm w-full px-4 py-2 border rounded-lg shadow-sm transition duration-300 ease-in-out ' +
         'focus:-translate-y-1 focus:outline-blue-300 hover:shadow-lg hover:border-blue-300 bg-gray-100'
 
-    const fieldCls = 'w-full max-w-xs p-3 bg-white rounded-lg font-sans'
+    const fieldCls = 'w-full p-3 bg-white rounded-lg font-sans'
     const labelCls = 'block text-gray-700 text-sm font-bold mb-2'
     const errorCls = 'text-red-500 text-xs mt-1'
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // Render
     return (
         <>
             {/* Info banner */}
@@ -174,12 +173,12 @@ function SearchTrialsForm({ trials, onFilter }) {
                 <label className={labelCls} htmlFor="age-input">Age</label>
                 <input
                     className={`${inputCls} ${errors.age ? 'border-red-400' : 'border-gray-300'}`}
-                    placeholder="Enter age"
+                    placeholder="Enter your age"
                     type="number"
                     min={0}
                     max={120}
                     value={age}
-                    onChange={(e) => setAge(e.target.value)}
+                    onChange={(e) => { setAge(e.target.value); setErrors(p => ({ ...p, age: undefined })) }}
                     id="age-input"
                 />
                 {errors.age && <p className={errorCls}>{errors.age}</p>}
@@ -202,7 +201,6 @@ function SearchTrialsForm({ trials, onFilter }) {
                 </select>
             </div>
 
-
             {/* Stage */}
             <div className={fieldCls}>
                 <label className={labelCls} htmlFor="cancer-stage-input">Stage</label>
@@ -221,6 +219,8 @@ function SearchTrialsForm({ trials, onFilter }) {
                     <option value="advanced">Advanced</option>
                 </select>
             </div>
+
+            {/* Line of Treatment */}
             <div className={fieldCls}>
                 <label className={labelCls} htmlFor="line-of-treatment-input">Line of Treatment</label>
                 <select
@@ -253,8 +253,9 @@ function SearchTrialsForm({ trials, onFilter }) {
                 {errors.cancerType && <p className={errorCls}>{errors.cancerType}</p>}
             </div>
 
+            {/* ECOG Score */}
             <div className={fieldCls}>
-                <label className={labelCls} htmlFor="age-input">ECOG Score</label>
+                <label className={labelCls} htmlFor="ecog-input">ECOG Score</label>
                 <input
                     className={`${inputCls} ${errors.ecogScore ? 'border-red-400' : 'border-gray-300'}`}
                     placeholder="Enter ECOG Score"
@@ -285,7 +286,7 @@ function SearchTrialsForm({ trials, onFilter }) {
 
             {/* Actions */}
             <div className="flex flex-row font-sm md:font-md items-center justify-center space-x-5">
-                <FormButton text="Search Trials" type='submit' onClick={handleSearch} />
+                <FormButton text={isLoading ? 'Loading Trials...' : 'Search Trials'} type='submit' onClick={handleSearch} disabled={isLoading} />
                 <FormButton text="Reset" type='button' onClick={handleReset} />
             </div>
         </>

@@ -34,15 +34,18 @@ class EligibilityMatcher {
     // Trial-level structured checks
     // -------------------------
 
-    // Recruiting / status
+    // Recruiting / status. Normalize to handle both ClinicalTrials.gov v2
+    // SCREAMING_SNAKE_CASE ("NOT_YET_RECRUITING") and legacy hyphen/space-
+    // cased values ("Not yet recruiting") with one rule.
     if (trial?.status) {
       const openStatuses = [
         "recruiting",
         "not-yet-recruiting",
         "enrolling-by-invitation",
       ];
+      const normalized = String(trial.status).toLowerCase().replace(/[_\s]+/g, "-");
 
-      if (openStatuses.includes(String(trial.status).toLowerCase())) {
+      if (openStatuses.includes(normalized)) {
         reasons.met_inclusion.push(`Trial is currently ${trial.status}.`);
         score += 5;
       } else {

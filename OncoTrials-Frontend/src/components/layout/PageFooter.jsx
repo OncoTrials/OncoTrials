@@ -2,6 +2,7 @@
 import { Footer, FooterBrand, FooterCopyright, FooterDivider, FooterLinkGroup } from "flowbite-react";
 import {HashLink} from "react-router-hash-link";
 
+const currentYear = new Date().getFullYear();
 function PageFooter() {
     const currentYear = new Date().getFullYear();
 
@@ -12,8 +13,8 @@ function PageFooter() {
                     <FooterBrand
                         href="/"
                         src={"/TrialsOnco.png"}
-                        alt="OncoTrials Logo"
-                        name="OncoTrials™"
+                        alt="TrialsOnco Logo"
+                        name="TrialsOnco™"
                         className="[&>span]:!text-black"
                     />
                     <FooterLinkGroup className="!text-black space-x-3">

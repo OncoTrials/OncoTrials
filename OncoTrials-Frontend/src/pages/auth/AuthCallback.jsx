@@ -24,7 +24,6 @@ export default function AuthCallback() {
 
             // Redirect based on role
             const role = session.user.user_metadata?.role || userRole;
-            console.log(role, completed.completedIntakeForm);
             
             if (role?.role === 'patient' && completed.completedIntakeForm === true) navigate('/patient-dashboard', { replace: true });
             if (role === 'patient' && completed.completedIntakeForm === true) navigate('/patient-dashboard', { replace: true });

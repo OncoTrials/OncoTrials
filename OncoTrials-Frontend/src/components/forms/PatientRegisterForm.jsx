@@ -47,7 +47,6 @@ const PatientRegisterForm = () => {
     const signUpMutation = useMutation({
         mutationFn: signUpUser,
         onSuccess: (data) => {
-            console.log('Sign up successful:', data);
             setEmail('');
             setPassword('');
             document.getElementById('form').reset();
