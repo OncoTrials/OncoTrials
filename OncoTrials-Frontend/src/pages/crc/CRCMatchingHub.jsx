@@ -4,21 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import CRCNavbar from '../../components/layout/CRCNavbar'
 import TrialDashboard from './TrialDashboard'
 import supabase from '../../utils/SupabaseClient'
+import { getAllTrials } from '../../api/trialsApi'
 
 const getUserMetadata = async () => {
   const { data: { user } } = await supabase.auth.getUser();
-
   return user?.user_metadata || null;
-}
-
-const getAllTrials = async () => {
-  const { data, error } = await supabase
-    .from('trials')
-    .select('*');
-
-
-  if (error) throw error;
-  return data;
 }
 
 function CRCMatchingHub() {

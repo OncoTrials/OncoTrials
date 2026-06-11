@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { fetchAndSyncStudies } = require('../services/clinicalTrialsService');
 const { getAllowedCountries } = require('../config/trialImportConfig');
+const { bumpCacheVersion, warmAllTrialsCache } = require('../services/trialsCache');
 
 // TODO: Add concurrency check after deployment to prevent duplicate runs
 async function main() {
@@ -48,6 +49,30 @@ async function main() {
       success: true,
     };
     console.log('IMPORT_RESULT_JSON:', JSON.stringify(logEntry));
+
+    // Bust the read-side cache *after* a successful import so users see fresh
+    // data on the next request:
+    //   1. Bump trials:cache_version → invalidates per-page /trials caches AND
+    //      the /api/v1/match result cache (which keys on trials version).
+    //   2. Warm the :all cache → re-paginate Supabase once, write to Redis.
+    //      User reads against /trials?limit=all then serve from Redis instantly,
+    //      never blocking on Supabase pagination.
+    //
+    // Both happen here so the importer is the sole "cache refresher" in normal
+    // operation — the only time the user-facing /trials?limit=all path ever
+    // paginates Supabase itself is the very first cold-start request after a
+    // fresh deploy.
+    if (result.totalInserted > 0 || result.totalUpdated > 0) {
+      await bumpCacheVersion('successful import run');
+      try {
+        const n = await warmAllTrialsCache();
+        console.log(`🔄 :all cache refreshed with ${n} trials`);
+      } catch (err) {
+        console.error('Failed to refresh :all cache (continuing):', err?.message || err);
+      }
+    } else {
+      console.log('No inserts or updates; leaving trials cache as-is.');
+    }
 
     process.exit(0);
 

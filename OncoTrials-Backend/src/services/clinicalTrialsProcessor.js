@@ -98,6 +98,9 @@ function formatStudyToTrialRow(study) {
     const conditions = conditionsModule.conditions && Array.isArray(conditionsModule.conditions) ? conditionsModule.conditions : null;
     const sex = eligibilityModule.sex || null;
     const minimumAge = eligibilityModule.minimumAge || null;
+    const rawMaxAge = eligibilityModule.maximumAge || null;
+    // ClinicalTrials.gov uses "N/A" when there is no upper age limit — store null instead
+    const maximumAge = rawMaxAge && rawMaxAge.trim().toUpperCase() !== 'N/A' ? rawMaxAge : null;
 
     const allLocations = contactsLocationsModule.locations && Array.isArray(contactsLocationsModule.locations) ? contactsLocationsModule.locations : null;
 
@@ -138,7 +141,7 @@ function formatStudyToTrialRow(study) {
     return {
         nct_id, sponsor, organization, title, summary, status: lastKnownStatus,
         study_description: descriptionModule.detailedDescription || null, conditions, sex,
-        minimum_age: minimumAge, location_city, location_state, location_country,
+        minimum_age: minimumAge, maximum_age: maximumAge, location_city, location_state, location_country,
         latitude, longitude, locations, eligibility_criteria: eligText,
         biomarker_criteria, start_date, primary_completion_date, completion_date,
         closed_at, source: "clinicaltrials.gov", source_version,
@@ -153,7 +156,7 @@ const TRACKED_FIELDS = [
     "status", "summary", "study_description", "title", "sponsor",
     "primary_completion_date", "completion_date", "closed_at",
     "location_city", "location_state", "location_country",
-    "biomarker_criteria", "eligibility_criteria", "conditions",
+    "biomarker_criteria", "eligibility_criteria", "conditions", "maximum_age",
 ];
 
 /**

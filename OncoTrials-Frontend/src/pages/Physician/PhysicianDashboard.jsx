@@ -1,25 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import PhysicianNavbar from '../../components/layout/PhysicianNavbar'
 import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
 import SearchTrialsForm from '../Patient/SearchTrialsForm'
 import TrialCards from '../Patient/TrialCards'
 import PageFooter from '../../components/layout/PageFooter.jsx'
+import { getAllTrials } from '../../api/trialsApi'
 
 const getUserMetadata = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-
-
     return user?.user_metadata || null;
-}
-
-const getAllTrials = async () => {
-    const { data, error } = await supabase
-        .from('trials')
-        .select('*');
-
-    if (error) throw error;
-    return data;
 }
 
 function PhysicianDashboard() {
@@ -33,17 +23,34 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    const { data: trials = [] } = useQuery({
+    const { data: trials, isLoading: trialsLoading, isError: trialsError, refetch: refetchTrials } = useQuery({
         queryKey: ['getAllTrials'],
         queryFn: getAllTrials,
         staleTime: 5 * 60 * 1000,
-        retry: false,
+        retry: 2,
         refetchOnWindowFocus: false,
     });
 
 
-    const [filteredTrials, setFilteredTrials] = useState([]);
+    // null = no search performed yet; [] = search returned no results; [...] = results
+    const [filteredTrials, setFilteredTrials] = useState(null);
+    const [browseAllPending, setBrowseAllPending] = useState(false);
 
+    useEffect(() => {
+        if (!trialsLoading && browseAllPending) {
+            if (trialsError) {
+                // Keep browseAllPending=true to let TrialCards display the error state
+            } else {
+                setBrowseAllPending(false);
+                setFilteredTrials(trials || null);
+            }
+        }
+    }, [trialsLoading, browseAllPending, trialsError, trials]);
+
+    const handleShowAll = () => {
+        if (trialsLoading || trialsError) { setBrowseAllPending(true); return; }
+        setFilteredTrials(trials || null);
+    };
 
     return (
         <>
@@ -68,12 +75,19 @@ function PhysicianDashboard() {
         lg:block
       `}
           >
-            <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} />
+            <SearchTrialsForm trials={trials} onFilter={setFilteredTrials} isLoading={trialsLoading} />
           </div>
   
           {/* Results */}
           <div className="w-full flex-1 shadow-2xl border border-gray-300 rounded-lg overflow-auto">
-            <TrialCards trials={filteredTrials?.length > 0 ? filteredTrials : []} />
+            <TrialCards
+              trials={filteredTrials}
+              isLoading={trialsLoading}
+              trialsError={trialsError}
+              browseAllPending={browseAllPending}
+              onShowAll={handleShowAll}
+              onRetry={refetchTrials}
+            />
           </div>
         </div>
         <PageFooter/>
