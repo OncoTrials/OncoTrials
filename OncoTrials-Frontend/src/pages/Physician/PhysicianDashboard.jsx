@@ -3,7 +3,7 @@ import PhysicianNavbar from '../../components/layout/PhysicianNavbar'
 import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
 import SearchTrialsForm from '../Patient/SearchTrialsForm'
-import TrialCards from '../Patient/TrialCards'
+import TrialCards from '../../components/shared/TrialCards'
 import PageFooter from '../../components/layout/PageFooter.jsx'
 import { getAllTrials } from '../../api/trialsApi'
 

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PhysicianNavbar from '../components/layout/PhysicianNavbar'
-import FormButton from '../components/buttons/FormButton'
-import supabase from '../utils/SupabaseClient'
+import PhysicianNavbar from '../layout/PhysicianNavbar'
+import FormButton from '../buttons/FormButton'
+import supabase from '../../utils/SupabaseClient'
 
 const EMPTY_FORM = {
     nct_id: '',

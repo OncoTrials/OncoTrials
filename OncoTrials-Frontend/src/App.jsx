@@ -1,13 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { RequireAuth } from './utils/Auth';
 import HomePage from './pages/HomePage';
-import PatientLoginPage from './pages/Patient/PatientLoginPage';
-import PatientRegister from './pages/Patient/PatientRegister';
 import PhysicianCRCRegisterPage from './pages/auth/PhysicianCRCRegisterPage';
 import PhysicianCRCLoginPage from './pages/auth/PhysicianCRCLoginPage';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import PatientDashboard from './pages/Patient/PatientDashboard';
-import PatientSettings from './pages/Patient/PatientSettings';
 import ChangePassword from './pages/auth/ChangePassword';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AuthCallback from './pages/auth/AuthCallback';
@@ -20,12 +17,10 @@ import CRCMatchingHub from './pages/crc/CRCMatchingHub';
 import CRCPatients from './pages/crc/CRCPatients'
 import './App.css'
 import PatientOnboarding from './pages/Patient/PatientOnboarding';
-import InputTrials from './pages/InputTrials';
-import AboutOncoTrials from './pages/AboutPage';
+import InputTrials from './components/shared/InputTrials';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import EpicLaunchLanding from './pages/epic/EpicLaunchLanding';
 import MatchResults from './pages/epic/MatchResults';
-import ContactPage from './pages/ContactPage';
 import EditTrial from './components/forms/EditTrial';
 
 export const queryClient = new QueryClient();
@@ -50,22 +45,12 @@ function App() {
           <Route path='/epic/launched' element={<EpicLaunchLanding />} />
           <Route path='/match/:requestId' element={<MatchResults />} />
           <Route path='/trials' element={<PatientDashboard />} />
-          <Route path='/about' element={<AboutOncoTrials/>} />
           <Route path='/privacy-policy' element={<PrivacyPolicy/>} />
-          <Route path='/contact' element={<ContactPage/>} />
-          
-          {/* Patient only routes */}
-          <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
-            <Route path='/patient-dashboard' element={<PatientDashboard />} />
-            <Route path='/patient-settings' element={<PatientSettings />} />
-            <Route path='/patient-intake' element={<PatientOnboarding />} />
-          </Route>
           {/* Physician only routes */}
           <Route element={<RequireAuth redirectTo='/physician-login' allowedRoles={['practitioner']} />} >
             <Route path='/physician-input-trials' element={<InputTrials />} />
             <Route path='/physician-dashboard' element={<PhysicianDashboard />} />
             <Route path='/physician-settings' element={<PhysicianSettings />} />
-            {/* <Route path="/trials/:trialId/edit" element={<EditTrial />} /> */}
           </Route>
           {/* CRC only routes */}
           <Route element={<RequireAuth redirectTo='/physician-crc-login' allowedRoles={['crc']} />} >
