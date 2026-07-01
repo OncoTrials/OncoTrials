@@ -203,12 +203,12 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Input Clinical Trial</h1>
-                    <p className="text-gray-500 mt-1">Upload a PDF protocol or fill in the trial details manually.</p>
+                    <p className="text-gray-500 mt-1">Upload a clinical trial protocol or fill in the trial details manually.</p>
                 </div>
 
                 {/* Mode toggle */}
                 <div className="flex gap-2 mb-8 p-1 bg-gray-100 rounded-xl w-fit border border-gray-200">
-                    {['manual'].map(m => (
+                    {['manual', 'document'].map(m => (
                         <button
                             key={m}
                             onClick={() => setMode(m)}
@@ -218,17 +218,17 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
                                     : 'text-gray-500 hover:text-gray-800'
                                 }`}
                         >
-                            {m === 'pdf' ? '📄 Upload PDF' : '✏️ Manual Entry'}
+                            {m === 'document' ? 'Upload Document' : 'Manual Entry'}
                         </button>
                     ))}
                 </div>
 
                 {/* ── PDF UPLOAD PANEL ── */}
-                {mode === 'pdf' && (
+                {mode === 'document' && (
                     <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-2">Upload Trial PDF</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-2">Upload Trial Document</h2>
                         <p className="text-gray-500 text-sm mb-6">
-                            Drop a clinical trial protocol or summary PDF. We'll extract the fields automatically — you can review and edit before submitting.
+                            Drop your clinical trial list document. We'll extract and update the relevant trials automatically — you can review and edit before submitting.
                         </p>
 
                         {/* Drop zone */}
@@ -252,7 +252,7 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="font-medium text-gray-700">Drag & drop a PDF here</p>
+                                    <p className="font-medium text-gray-700">Drag & drop a document here</p>
                                     <p className="text-sm text-gray-400 mt-1">or click to browse</p>
                                 </div>
                             )}

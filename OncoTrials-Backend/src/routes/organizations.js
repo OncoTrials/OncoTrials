@@ -15,6 +15,23 @@ router.get('/', async (req, res) => {
     res.json(data);
 });
 
+router.post('/organization-name', async (req, res) => {
+    const {organizationId} = req.body ?? {};
+    if (!organizationId) {
+        return res.status(400).json({ error: 'organizationId is required' });
+    }
+    try {
+        const { data: organizationName, error } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', organizationId)
+            .single();
+        res.json(organizationName)
+    } catch (error) {
+        res.status(500).json({error})
+    }
+})
+
 // POST /organizations/check-domain — validate an email against an org's
 // domain lists. Returns only the verdict so the domain arrays never leak.
 router.post('/check-domain', async (req, res) => {

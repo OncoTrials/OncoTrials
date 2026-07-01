@@ -23,6 +23,7 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
+
     const { data: trials, isLoading: trialsLoading, isError: trialsError, refetch: refetchTrials } = useQuery({
         queryKey: ['getAllTrials'],
         queryFn: getAllTrials,
@@ -31,7 +32,6 @@ function PhysicianDashboard() {
         refetchOnWindowFocus: false,
     });
 
-    console.log(trials);
 
 
     // null = no search performed yet; [] = search returned no results; [...] = results
@@ -89,6 +89,7 @@ function PhysicianDashboard() {
               browseAllPending={browseAllPending}
               onShowAll={handleShowAll}
               onRetry={refetchTrials}
+              userData={userData}
             />
           </div>
         </div>

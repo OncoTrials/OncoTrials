@@ -48,7 +48,7 @@ const CHUNK_ROWS = Number(process.env.TRIALS_CACHE_CHUNK_ROWS) || 500;
 const LIST_COLUMNS = [
     'id', 'nct_id', 'title', 'status', 'sponsor',
     'summary', 'conditions', 'sex', 'minimum_age', 'maximum_age',
-    'location_city', 'location_state', 'location_country',
+    'location_city', 'location_state', 'location_country', 'organization',
     'latitude', 'longitude', 'start_date', 'primary_completion_date',
     'completion_date', 'eligibility_criteria_summary', 'biomarker_criteria', 'created_at',
 ].join(', ');

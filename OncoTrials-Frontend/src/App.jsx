@@ -26,6 +26,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import EpicLaunchLanding from './pages/epic/EpicLaunchLanding';
 import MatchResults from './pages/epic/MatchResults';
 import ContactPage from './pages/ContactPage';
+import EditTrial from './components/forms/EditTrial';
 
 export const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ function App() {
           <Route path='/about' element={<AboutOncoTrials/>} />
           <Route path='/privacy-policy' element={<PrivacyPolicy/>} />
           <Route path='/contact' element={<ContactPage/>} />
+          
           {/* Patient only routes */}
           <Route element={<RequireAuth redirectTo='/patient-login' allowedRoles={['patient']} />} >
             <Route path='/patient-dashboard' element={<PatientDashboard />} />
@@ -63,6 +65,7 @@ function App() {
             <Route path='/physician-input-trials' element={<InputTrials />} />
             <Route path='/physician-dashboard' element={<PhysicianDashboard />} />
             <Route path='/physician-settings' element={<PhysicianSettings />} />
+            {/* <Route path="/trials/:trialId/edit" element={<EditTrial />} /> */}
           </Route>
           {/* CRC only routes */}
           <Route element={<RequireAuth redirectTo='/physician-crc-login' allowedRoles={['crc']} />} >

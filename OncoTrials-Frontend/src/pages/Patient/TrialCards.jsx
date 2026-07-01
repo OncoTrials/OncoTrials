@@ -3,6 +3,10 @@ import ViewDetailsButtons from '../../components/buttons/ViewDetailsButtons';
 import LocationFilter from '../../components/filters/LocationFilter';
 import { getTrialById } from '../../api/trialsApi';
 import { filterTrialsByDistance } from '../../geo';
+import { PencilIcon } from '@phosphor-icons/react';
+import { getOrganizationName } from '../../api/organizationsApi';
+import { useNavigate } from 'react-router';
+import EditTrial from '../../components/forms/EditTrial';
 
 // Skeleton Card
 function SkeletonCard() {
@@ -35,7 +39,26 @@ function SkeletonCard() {
 // user starts a new view of the results (runs a sidebar search, resets the
 // form, or clicks "Browse All"). When it changes we clear the in-card keyword
 // search and jump back to the first page so each new view starts clean.
-function TrialCards({ trials, isLoading, trialsError = false, browseAllPending = false, onShowAll, onRetry, streamingTotal = 0, streamDone = false, viewResetKey = 0 }) {
+function TrialCards({ trials, isLoading, trialsError = false, browseAllPending = false, onShowAll, onRetry, streamingTotal = 0, streamDone = false, viewResetKey = 0, userData }) {
+    const [organizationName, setOrganizationName] = useState(null);
+    const [editTrial, setEditTrial] = useState(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        async function loadOrganizationName() {
+            if (!userData?.organization_id) return;
+
+            try {
+                const name = await getOrganizationName(userData.organization_id);
+                setOrganizationName(name.name);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        loadOrganizationName();
+    }, [userData?.organization_id]);
+
     const [modalData, setModalData] = useState(null);       // partial data (list columns)
     const [fullModalData, setFullModalData] = useState(null); // full data (detail fetch)
     const [modalDetailLoading, setModalDetailLoading] = useState(false);
@@ -72,7 +95,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
     // partially-loaded list and the visible results keep changing as more
     // batches arrive. The cleanest fix is to render this block only when
     // `streamDone` is true (and/or skip filtering in processedTrials until then).
-    const FILTERS_ENABLED = false;
+    const FILTERS_ENABLED = true;
 
     const processedTrials = useMemo(() => {
         if (!trials || trials.length === 0) return trials;
@@ -188,7 +211,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
     const paginatedData = processedTrials?.slice(startIndex, startIndex + trialsPerPage) ?? [];
 
     const handlePreviousPage = () => { if (currentPage > 1) setCurrentPage(currentPage - 1); };
-    const handleNextPage    = () => { if (currentPage < totalPages) setCurrentPage(currentPage + 1); };
+    const handleNextPage = () => { if (currentPage < totalPages) setCurrentPage(currentPage + 1); };
 
     const handleRetry = async () => {
         if (!onRetry) return;
@@ -211,6 +234,18 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
             .finally(() => setModalDetailLoading(false));
     }, [modalData?.id]);
 
+    const openDetailsModal = (trial, event) => {
+        event?.stopPropagation();
+        setModalData(trial);
+        setFullModalData(null);
+        setSelectedLocation(null);
+    };
+
+    const openEditModal = (trial, event) => {
+        event?.stopPropagation();
+        setEditTrial(trial);
+    };
+
     const openModal = (trial) => {
         setModalData(trial);
         setFullModalData(null);
@@ -228,33 +263,33 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
     const convertStatus = (status) => {
         if (!status) return 'Unavailable';
         switch (status.toLowerCase()) {
-            case 'recruiting':              return 'Recruiting';
-            case 'not_yet_recruiting':      return 'Not Yet Recruiting';
-            case 'active_not_recruiting':   return 'Active Not Recruiting';
+            case 'recruiting': return 'Recruiting';
+            case 'not_yet_recruiting': return 'Not Yet Recruiting';
+            case 'active_not_recruiting': return 'Active Not Recruiting';
             case 'enrolling_by_invitation': return 'Enrolling By Invitation';
-            default:                        return 'Unavailable';
+            default: return 'Unavailable';
         }
     };
 
     const getStatusColor = (status) => {
         if (!status) return 'bg-red-100 text-red-700';
         switch (status.toLowerCase()) {
-            case 'recruiting':              return 'bg-green-100 text-green-700';
-            case 'not_yet_recruiting':      return 'bg-yellow-100 text-yellow-700';
-            case 'active_not_recruiting':   return 'bg-gray-100 text-gray-600';
+            case 'recruiting': return 'bg-green-100 text-green-700';
+            case 'not_yet_recruiting': return 'bg-yellow-100 text-yellow-700';
+            case 'active_not_recruiting': return 'bg-gray-100 text-gray-600';
             case 'enrolling_by_invitation': return 'bg-blue-100 text-blue-700';
-            default:                        return 'bg-red-100 text-red-700';
+            default: return 'bg-red-100 text-red-700';
         }
     };
 
     const getStatusDot = (status) => {
         if (!status) return 'bg-red-400';
         switch (status.toLowerCase()) {
-            case 'recruiting':              return 'bg-green-500 animate-pulse';
-            case 'not_yet_recruiting':      return 'bg-yellow-500';
-            case 'active_not_recruiting':   return 'bg-gray-400';
+            case 'recruiting': return 'bg-green-500 animate-pulse';
+            case 'not_yet_recruiting': return 'bg-yellow-500';
+            case 'active_not_recruiting': return 'bg-gray-400';
             case 'enrolling_by_invitation': return 'bg-blue-500 animate-pulse';
-            default:                        return 'bg-red-400';
+            default: return 'bg-red-400';
         }
     };
 
@@ -265,11 +300,11 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
 
     const getMatchStyle = (match) => {
         switch (match?.status) {
-            case 'likely_eligible': return { bar: 'bg-green-400',  badge: 'bg-green-100 text-green-700 border-green-200',  text: 'Likely Eligible' };
-            case 'eligible':        return { bar: 'bg-green-400',  badge: 'bg-green-100 text-green-700 border-green-200',  text: 'Eligible' };
-            case 'needs_review':    return { bar: 'bg-amber-400',  badge: 'bg-amber-100 text-amber-700 border-amber-200',  text: 'Needs Review' };
-            case 'not_eligible':    return { bar: 'bg-red-400',    badge: 'bg-red-100 text-red-700 border-red-200',        text: 'Not Eligible' };
-            default:                return { bar: 'bg-sky-200',    badge: '',                                              text: '' };
+            case 'likely_eligible': return { bar: 'bg-green-400', badge: 'bg-green-100 text-green-700 border-green-200', text: 'Likely Eligible' };
+            case 'eligible': return { bar: 'bg-green-400', badge: 'bg-green-100 text-green-700 border-green-200', text: 'Eligible' };
+            case 'needs_review': return { bar: 'bg-amber-400', badge: 'bg-amber-100 text-amber-700 border-amber-200', text: 'Needs Review' };
+            case 'not_eligible': return { bar: 'bg-red-400', badge: 'bg-red-100 text-red-700 border-red-200', text: 'Not Eligible' };
+            default: return { bar: 'bg-sky-200', badge: '', text: '' };
         }
     };
 
@@ -426,72 +461,71 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                 </div>
 
                 {FILTERS_ENABLED && (
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    {/* Search box */}
-                    <div className="relative flex-1 sm:flex-none sm:w-64">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search trials…"
-                            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {/* Search box */}
+                        <div className="relative flex-1 sm:flex-none sm:w-64">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search trials…"
+                                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700
                                 focus:ring-2 focus:ring-sky-100 focus:border-sky-400 outline-none transition-all duration-200
                                 placeholder:text-gray-400"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                </svg>
-                            </button>
-                        )}
-                    </div>
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
 
-                    {/* Location filter (applies to browse-all and search results alike).
+                        {/* Location filter (applies to browse-all and search results alike).
                         The key remounts it on a view reset so its own input/UI clears
                         too, matching the setLocationFilter(null) in the reset effect. */}
-                    <LocationFilter key={viewResetKey} onChange={setLocationFilter} />
+                        <LocationFilter key={viewResetKey} onChange={setLocationFilter} />
 
-                    {/* Sort dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowSortDropdown(prev => !prev)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700
+                        {/* Sort dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowSortDropdown(prev => !prev)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700
                                 hover:border-sky-300 hover:bg-sky-50 transition-all duration-200 whitespace-nowrap"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                            </svg>
-                            {sortOptions.find(o => o.value === sortBy)?.label || 'Sort'}
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                        {showSortDropdown && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
-                                {sortOptions.map(opt => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => { setSortBy(opt.value); setShowSortDropdown(false); }}
-                                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                                            sortBy === opt.value
-                                                ? 'bg-sky-50 text-sky-700 font-medium'
-                                                : 'text-gray-700 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                </svg>
+                                {sortOptions.find(o => o.value === sortBy)?.label || 'Sort'}
+                                <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                            {showSortDropdown && (
+                                <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20">
+                                    {sortOptions.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => { setSortBy(opt.value); setShowSortDropdown(false); }}
+                                            className={`w-full text-left px-4 py-2 text-sm transition-colors ${sortBy === opt.value
+                                                    ? 'bg-sky-50 text-sky-700 font-medium'
+                                                    : 'text-gray-700 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
                 )}
             </div>
 
@@ -506,58 +540,68 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                     </p>
                 </div>
             ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[550px] content-start">
-                {paginatedData.map((trial) => (
-                    <div
-                        key={trial.id}
-                        onClick={() => openModal(trial)}
-                        className="relative flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[550px] content-start">
+                    {paginatedData.map((trial) => (
+                        <div
+                            key={trial.id}
+                            onClick={(event) => openDetailsModal(trial, event)}
+                            className="relative flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100
                             hover:shadow-md hover:border-sky-200 hover:-translate-y-0.5
                             transition-all duration-200 cursor-pointer overflow-hidden"
-                    >
-                        {/* Top accent bar — colored by eligibility match when available */}
-                        <div className={`h-1.5 w-full shrink-0 ${getMatchStyle(trial.match).bar}`} />
+                        >
+                            {/* Top accent bar — colored by eligibility match when available */}
+                            <div className={`h-1.5 w-full shrink-0 ${getMatchStyle(trial.match).bar}`} />
 
-                        <div className="flex flex-col flex-1 p-5 gap-3">
-                            {/* Header */}
-                            <div className="flex items-start justify-between gap-2">
-                                <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 flex-1">
-                                    {trial.title}
-                                </h3>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    {trial.match && (
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getMatchStyle(trial.match).badge}`}>
-                                            {getMatchStyle(trial.match).text}
-                                        </span>
-                                    )}
-                                    {trial.completion_date && (
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide bg-gray-100 text-gray-600 border border-gray-200">
-                                            Ends {formatDate(trial.completion_date)}
-                                        </span>
+                            <div className="flex flex-col flex-1 p-5 gap-3">
+                                {/* Header */}
+                                <div className="flex items-start justify-between gap-2">
+                                    <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 flex-1">
+                                        {trial.title}
+                                    </h3>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        {trial.match && (
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getMatchStyle(trial.match).badge}`}>
+                                                {getMatchStyle(trial.match).text}
+                                            </span>
+                                        )}
+                                        {trial.completion_date && (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-wide bg-gray-100 text-gray-600 border border-gray-200">
+                                                Ends {formatDate(trial.completion_date)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {trial.organization === organizationName && (
+                                        <PencilIcon
+                                            size={18}
+                                            weight="bold"
+                                            className="text-sky-500 hover:text-sky-700 cursor-pointer shrink-0"
+                                            onClick={(e) => {
+                                                openEditModal(trial, e);
+                                            }}
+                                        />
                                     )}
                                 </div>
-                            </div>
 
-                            {/* Snippet */}
-                            <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
-                                {cleanEligibilitySummary((trial?.eligibility_criteria_summary || trial?.summary)?.slice(0, 140))}
-                                {(trial?.eligibility_criteria_summary || trial?.summary)?.length > 140 ? '…' : ''}
-                            </p>
+                                {/* Snippet */}
+                                <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">
+                                    {cleanEligibilitySummary((trial?.eligibility_criteria_summary || trial?.summary)?.slice(0, 140))}
+                                    {(trial?.eligibility_criteria_summary || trial?.summary)?.length > 140 ? '…' : ''}
+                                </p>
 
-                            {/* Footer */}
-                            <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide ${getStatusColor(trial.status)}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(trial.status)}`} />
-                                    {convertStatus(trial.status)}
-                                </span>
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <ViewDetailsButtons onClick={() => openModal(trial)} Text="View Details" />
+                                {/* Footer */}
+                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium tracking-wide ${getStatusColor(trial.status)}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(trial.status)}`} />
+                                        {convertStatus(trial.status)}
+                                    </span>
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <ViewDetailsButtons onClick={(e) => openDetailsModal(trial, e)} Text="View Details" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
             )}
 
             {/* Pagination */}
@@ -570,7 +614,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                         bg-sky-50 border border-sky-200 text-sky-700 text-xs sm:text-sm font-semibold
                         hover:bg-sky-500 hover:border-sky-500 hover:text-white hover:shadow-md
                         disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-sky-50 disabled:hover:text-sky-700 disabled:hover:border-sky-200 disabled:hover:shadow-none
-                        transition-all duration-200"
+                        transition-all duration-200 cursor-pointer"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -629,7 +673,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                         bg-sky-50 border border-sky-200 text-sky-700 text-xs sm:text-sm font-semibold
                         hover:bg-sky-500 hover:border-sky-500 hover:text-white hover:shadow-md
                         disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-sky-50 disabled:hover:text-sky-700 disabled:hover:border-sky-200 disabled:hover:shadow-none
-                        transition-all duration-200"
+                        transition-all duration-200 cursor-pointer"
                 >
                     Next
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -812,29 +856,29 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                     {modalDetailLoading ? (
                                         <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
                                     ) : displayData?.eligibility_summary_clinician_json ? (
-                                    <div className="bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto space-y-4 text-sm text-gray-700">
-                                        {displayData.eligibility_summary_clinician_json.inclusion_criteria?.length > 0 && (
-                                            <div>
-                                                <h4 className="font-semibold text-green-700 mb-1">Inclusion Criteria</h4>
-                                                <ul className="list-disc pl-5 space-y-1">
-                                                    {displayData.eligibility_summary_clinician_json.inclusion_criteria.map((item, index) => (
-                                                        <li key={index}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {displayData.eligibility_summary_clinician_json.exclusion_criteria?.length > 0 && (
-                                            <div>
-                                                <h4 className="font-semibold text-red-700 mb-1">Exclusion Criteria</h4>
-                                                <ul className="list-disc pl-5 space-y-1">
-                                                    {displayData.eligibility_summary_clinician_json.exclusion_criteria.map((item, index) => (
-                                                        <li key={index}>{item}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : null}
+                                        <div className="bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto space-y-4 text-sm text-gray-700">
+                                            {displayData.eligibility_summary_clinician_json.inclusion_criteria?.length > 0 && (
+                                                <div>
+                                                    <h4 className="font-semibold text-green-700 mb-1">Inclusion Criteria</h4>
+                                                    <ul className="list-disc pl-5 space-y-1">
+                                                        {displayData.eligibility_summary_clinician_json.inclusion_criteria.map((item, index) => (
+                                                            <li key={index}>{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {displayData.eligibility_summary_clinician_json.exclusion_criteria?.length > 0 && (
+                                                <div>
+                                                    <h4 className="font-semibold text-red-700 mb-1">Exclusion Criteria</h4>
+                                                    <ul className="list-disc pl-5 space-y-1">
+                                                        {displayData.eligibility_summary_clinician_json.exclusion_criteria.map((item, index) => (
+                                                            <li key={index}>{item}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
 
@@ -849,56 +893,54 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                                     {modalDetailLoading ? (
                                         <div className="animate-pulse bg-gray-100 rounded-xl h-20" />
                                     ) : (
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
-                                            {displayData.locations.map((loc, locIdx) => (
-                                                <div
-                                                    key={locIdx}
-                                                    onClick={() => setSelectedLocation(loc)}
-                                                    className={`flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer transition-colors ${
-                                                        selectedLocation === loc ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-white border border-gray-100 shadow-sm hover:bg-gray-50'
-                                                    }`}
-                                                >
-                                                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                                        <span className="text-sm font-semibold text-gray-800 truncate">{loc.facility}</span>
-                                                        <span className="text-xs text-gray-500">
-                                                            {[loc.city, loc.state, loc.country].filter(Boolean).join(', ')}
-                                                            {loc.zip ? ` ${loc.zip}` : ''}
-                                                        </span>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col gap-2 max-h-52 overflow-y-auto pr-1">
+                                                {displayData.locations.map((loc, locIdx) => (
+                                                    <div
+                                                        key={locIdx}
+                                                        onClick={() => setSelectedLocation(loc)}
+                                                        className={`flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer transition-colors ${selectedLocation === loc ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-white border border-gray-100 shadow-sm hover:bg-gray-50'
+                                                            }`}
+                                                    >
+                                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                                            <span className="text-sm font-semibold text-gray-800 truncate">{loc.facility}</span>
+                                                            <span className="text-xs text-gray-500">
+                                                                {[loc.city, loc.state, loc.country].filter(Boolean).join(', ')}
+                                                                {loc.zip ? ` ${loc.zip}` : ''}
+                                                            </span>
+                                                        </div>
+                                                        {loc.status && (
+                                                            <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${loc.status.toUpperCase() === 'RECRUITING' ? 'bg-green-100 text-green-700'
+                                                                    : loc.status.toUpperCase() === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
+                                                                        : 'bg-yellow-100 text-yellow-700'
+                                                                }`}>
+                                                                {loc.status.charAt(0).toUpperCase() + loc.status.slice(1).toLowerCase()}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    {loc.status && (
-                                                        <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-medium ${
-                                                            loc.status.toUpperCase() === 'RECRUITING' ? 'bg-green-100 text-green-700'
-                                                            : loc.status.toUpperCase() === 'COMPLETED' ? 'bg-gray-100 text-gray-600'
-                                                            : 'bg-yellow-100 text-yellow-700'
-                                                        }`}>
-                                                            {loc.status.charAt(0).toUpperCase() + loc.status.slice(1).toLowerCase()}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
+                                            {/* Google Maps embed for selected location */}
+                                            {selectedLocation && (() => {
+                                                const query = [selectedLocation.facility, selectedLocation.city, selectedLocation.state, selectedLocation.country, selectedLocation.zip]
+                                                    .filter(Boolean).join('+').replace(/\s+/g, '+');
+                                                return (
+                                                    <div className="rounded-xl overflow-hidden border border-gray-200">
+                                                        <iframe
+                                                            width="100%" height="220"
+                                                            style={{ border: 0, display: 'block' }}
+                                                            loading="lazy" allowFullScreen
+                                                            referrerPolicy="no-referrer-when-downgrade"
+                                                            src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_API_KEY}&q=${encodeURIComponent(query)}`}
+                                                        />
+                                                        <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
+                                                            {selectedLocation.facility} — {[selectedLocation.city, selectedLocation.state, selectedLocation.country].filter(Boolean).join(', ')}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
-                                        {/* Google Maps embed for selected location */}
-                                        {selectedLocation && (() => {
-                                            const query = [selectedLocation.facility, selectedLocation.city, selectedLocation.state, selectedLocation.country, selectedLocation.zip]
-                                                .filter(Boolean).join('+').replace(/\s+/g, '+');
-                                            return (
-                                                <div className="rounded-xl overflow-hidden border border-gray-200">
-                                                    <iframe
-                                                        width="100%" height="220"
-                                                        style={{ border: 0, display: 'block' }}
-                                                        loading="lazy" allowFullScreen
-                                                        referrerPolicy="no-referrer-when-downgrade"
-                                                        src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_API_KEY}&q=${encodeURIComponent(query)}`}
-                                                    />
-                                                    <div className="px-3 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
-                                                        {selectedLocation.facility} — {[selectedLocation.city, selectedLocation.state, selectedLocation.country].filter(Boolean).join(', ')}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
-                                )}
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -913,6 +955,12 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
                             </button>
                         </div>
                     </div>
+                    <EditTrial
+                        trial={editTrial}
+                        isOpen={!!editTrial}
+                        onClose={() => setEditTrial(null)}
+                        onSaveSuccess={onRetry}
+                    />
                 </div>
             )}
         </div>
