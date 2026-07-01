@@ -12,6 +12,16 @@ export async function getAllTrials() {
     return data ?? [];
 }
 
+export async function updateTrial(trialId, updatedFields) {
+    const res = await fetch(`${API_BASE}/trials/${trialId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedFields),
+    });
+    if (!res.ok) throw new Error(`Failed to update trial ${trialId}: ${res.status}`);
+    return res.json();
+}
+
 // Loads the trial list as a *stream* of batches instead of one big response.
 //
 // The backend replies in NDJSON ("newline-delimited JSON"): one self-contained

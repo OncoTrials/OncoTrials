@@ -98,7 +98,7 @@ export const SORT_OPTIONS = [
   { value: "za", label: "Z → A" },
 ];
 
-const STATUS_OPTIONS = [
+export const STATUS_OPTIONS = [
     { value: "recruiting", label: "Recruiting" },
     { value: "not_yet_recruiting", label: "Not Yet Recruiting" },
     { value: "active_not_recruiting", label: "Active Not Recruiting" },

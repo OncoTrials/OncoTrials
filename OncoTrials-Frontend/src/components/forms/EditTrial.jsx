@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { STATUS_OPTIONS } from "../../utils/TrialCardUtils";
-// import { updateTrial } from "../../api/trialsApi";
+import { updateTrial } from "../../api/trialsApi";
 
 
 
@@ -201,7 +201,7 @@ export default function EditTrial({
             setSaving(true);
             setError(null);
 
-            // await updateTrial(trial.id, payload);
+            await updateTrial(trial.id, payload);
 
             if (onSaveSuccess) {
                 onSaveSuccess();
