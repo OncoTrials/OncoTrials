@@ -26,6 +26,9 @@ jobs:
         run: npm run build
         working-directory: OncoTrials-Frontend
         env:
+          # Must be set here: without it Vite falls back to the committed
+          # .env, which points at http://localhost:5000 (dev backend).
+          VITE_API_URL: https://oncotrials-backend-919172731579.us-central1.run.app
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
