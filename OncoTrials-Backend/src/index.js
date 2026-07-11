@@ -37,6 +37,7 @@ app.use('/organizations', require('./routes/organizations'));
 app.use('/api/v1/match', require('./routes/api/v1/match'));
 app.use('/fhir/launch',   require('./routes/fhir/launch'));
 app.use('/fhir/callback', require('./routes/fhir/callback'));
+app.use('/fhir/health',   require('./routes/fhir/health'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

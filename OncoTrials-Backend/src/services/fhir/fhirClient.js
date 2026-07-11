@@ -46,7 +46,9 @@ async function fetchCollection(fhirBaseUrl, accessToken, resourceType, patientId
         const { data } = await http.get(url);
         if (Array.isArray(data?.entry)) {
             for (const e of data.entry) {
-                if (e.resource) entries.push(e.resource);
+                // Epic bundles can interleave OperationOutcome entries with
+                // real resources — keep only the type we asked for.
+                if (e.resource?.resourceType === resourceType) entries.push(e.resource);
             }
         }
         const nextLink = (data?.link || []).find((l) => l.relation === 'next');
@@ -55,6 +57,53 @@ async function fetchCollection(fhirBaseUrl, accessToken, resourceType, patientId
     }
 
     return entries;
+}
+
+// Epic's Observation.Search REQUIRES a category (or code) search parameter —
+// a bare `Observation?patient=X` returns a 400/OperationOutcome on Epic even
+// though it works on SMART Health IT and other reference sandboxes. Try the
+// permissive query first (cheapest, works everywhere else), then fall back to
+// one query per category, merged and de-duplicated by resource id.
+//
+// Categories chosen to cover what patientNormalizer reads: ECOG (survey /
+// exam), cancer stage + genomics (laboratory), smoking status (social-history).
+const OBSERVATION_CATEGORIES = ['laboratory', 'vital-signs', 'social-history', 'survey', 'exam', 'imaging'];
+
+async function fetchObservations(fhirBaseUrl, accessToken, patientId) {
+    try {
+        return await fetchCollection(fhirBaseUrl, accessToken, 'Observation', patientId);
+    } catch (err) {
+        console.warn(`[fhirClient] uncategorized Observation search failed (${err?.response?.status || err?.message}); retrying per-category (Epic requires category)`);
+    }
+
+    const perCategory = await Promise.all(OBSERVATION_CATEGORIES.map(async (category) => {
+        try {
+            return await fetchCollection(fhirBaseUrl, accessToken, 'Observation', patientId, { category });
+        } catch (err) {
+            console.warn(`[fhirClient] Observation category=${category} search failed: ${err?.response?.status || err?.message}`);
+            return [];
+        }
+    }));
+
+    const seen = new Map();
+    for (const obs of perCategory.flat()) {
+        const key = obs.id || JSON.stringify(obs.code || {});
+        if (!seen.has(key)) seen.set(key, obs);
+    }
+    return [...seen.values()];
+}
+
+// Non-critical collections should degrade to [] instead of failing the whole
+// launch: a patient with a blocked MedicationRequest scope can still be
+// matched on diagnosis + demographics. Patient itself stays fatal — without
+// it there is nothing to match.
+async function fetchOptional(label, promise) {
+    try {
+        return await promise;
+    } catch (err) {
+        console.warn(`[fhirClient] ${label} fetch failed (continuing without it): ${err?.response?.status || err?.message}`);
+        return [];
+    }
 }
 
 // EPIC's `next` link is absolute; strip the base so axios doesn't double-prepend.
@@ -78,11 +127,11 @@ function toRelative(absoluteUrl, fhirBaseUrl) {
  */
 async function fetchPatientBundle(fhirBaseUrl, accessToken, patientId) {
     const [patient, conditions, observations, medicationRequests, procedures] = await Promise.all([
-        fetchPatient(fhirBaseUrl, accessToken, patientId),
-        fetchCollection(fhirBaseUrl, accessToken, 'Condition',         patientId),
-        fetchCollection(fhirBaseUrl, accessToken, 'Observation',       patientId),
-        fetchCollection(fhirBaseUrl, accessToken, 'MedicationRequest', patientId),
-        fetchCollection(fhirBaseUrl, accessToken, 'Procedure',         patientId),
+        fetchPatient(fhirBaseUrl, accessToken, patientId),      // fatal if it fails — nothing to match without it
+        fetchOptional('Condition',         fetchCollection(fhirBaseUrl, accessToken, 'Condition',         patientId)),
+        fetchOptional('Observation',       fetchObservations(fhirBaseUrl, accessToken, patientId)),
+        fetchOptional('MedicationRequest', fetchCollection(fhirBaseUrl, accessToken, 'MedicationRequest', patientId)),
+        fetchOptional('Procedure',         fetchCollection(fhirBaseUrl, accessToken, 'Procedure',         patientId)),
     ]);
 
     return { patient, conditions, observations, medicationRequests, procedures };

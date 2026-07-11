@@ -18,7 +18,12 @@ const { getAllTrialsCached, warmAllTrialsCache } = require('./trialsCache');
 
 const PREFILTER_LIMIT  = 500;     // hard cap — Stage 2 chews JS on this set
 const TOP_RANK_LIMIT   = 20;      // returned to caller
-const AI_EXPLAIN_LIMIT = 10;      // top N that get the AI rationale (cost control)
+const AI_EXPLAIN_LIMIT = Number(process.env.MATCH_AI_EXPLAIN_LIMIT) || 10;  // top N that get the AI rationale (cost control)
+
+// Production quality bar: a trial must clear this rule score to be shown at
+// all. Trials below it are weak keyword-level matches — returning an empty
+// list is better than padding it with them.
+const MIN_RULE_SCORE = Number(process.env.MATCH_MIN_RULE_SCORE) || 55;
 
 // PostgREST encodes `.in('id', [uuid1, uuid2, ...])` as a query-string filter
 // `id=in.("uuid1","uuid2",...)`. With ~39 chars per quoted UUID + comma, 500
@@ -82,19 +87,36 @@ async function rankTrialsForPatient(patient, opts = {}) {
         return { trial, match };
     });
 
-    // Knock out hard "not eligible" results before ranking — they shouldn't
-    // crowd the top of the list even if their raw score is mid-range.
+    // Knock out hard "not eligible" results and weak keyword-level matches
+    // before ranking. MIN_RULE_SCORE is the production quality bar: an empty
+    // list is a better answer than one padded with marginal matches.
+    // Tie-break on nct_id so identical scores always rank in the same order
+    // — run-to-run stability matters more than which of two equal trials
+    // comes first.
     const viable = scored
-        .filter(({ match }) => match.status !== EligibilityMatcher.STATUS.NOT_ELIGIBLE)
-        .sort((a, b) => b.match.score - a.match.score);
+        .filter(({ match }) =>
+            match.status !== EligibilityMatcher.STATUS.NOT_ELIGIBLE
+            && match.score >= MIN_RULE_SCORE)
+        .sort((a, b) =>
+            (b.match.score - a.match.score)
+            || String(a.trial.nct_id || '').localeCompare(String(b.trial.nct_id || '')));
 
-    const top = viable.slice(0, limit);
+    // When the AI gate is on, never return more trials than the gate can vet.
+    // Trials 11..20 used to skip Stage 3 entirely and could surface un-vetted
+    // — that's where most "obviously wrong trial" reports came from.
+    const effectiveLimit = withAi ? Math.min(limit, AI_EXPLAIN_LIMIT) : limit;
+    const top = viable.slice(0, effectiveLimit);
 
     // Stage 3 — AI explainer (only on first AI_EXPLAIN_LIMIT of the top set).
     // Runs in parallel; each call has its own timeout + fallback inside
     // explainOnePair, so a slow / failed call does not block the others.
     let aiProvider = null;
     let aiModel    = null;
+    // True when every trial we returned was either AI-vetted successfully or
+    // AI was off by org policy. The route only caches complete results —
+    // a run degraded by LLM timeouts/cost caps should be retried, not frozen
+    // in the cache for 24h.
+    let aiComplete = !withAi;
 
     if (withAi && top.length > 0) {
         // De-identified summary of what we're handing to the LLM. Useful for
@@ -129,17 +151,25 @@ async function rankTrialsForPatient(patient, opts = {}) {
             aiProvider = aiResults[0].provider;
             aiModel    = aiResults[0].model;
         }
+
+        aiComplete = aiResults.every((r) => r.ok);
     }
 
     // Filter out trials the AI explicitly tagged as not disease-relevant.
     // `disease_match === 'no'` means the AI judged the trial studies a
     // different disease entirely; we drop those rather than rank them.
-    // Trials past AI_EXPLAIN_LIMIT keep `ai === undefined` and pass through.
     const aiRelevant = top.filter(({ ai }) => !ai || !ai.ok || ai.explanation?.disease_match !== 'no');
 
-    // Re-rank: now that disease-irrelevant trials are gone, rebuild the
-    // index so #1 is the best of what's left.
-    const finalTop = aiRelevant.slice(0, limit);
+    // Final ordering: blended relevance score, with deterministic tie-breaks
+    // (rule score, then nct_id) so the same inputs always produce the same
+    // ranked list.
+    const finalTop = aiRelevant
+        .map((entry) => ({ ...entry, blended: blendedScore(entry.match, entry.ai) }))
+        .sort((a, b) =>
+            (b.blended - a.blended)
+            || (b.match.score - a.match.score)
+            || String(a.trial.nct_id || '').localeCompare(String(b.trial.nct_id || '')))
+        .slice(0, limit);
 
     const results = finalTop.map(({ trial, match, ai }, idx) => formatRankedResult(trial, match, idx, ai));
 
@@ -147,6 +177,7 @@ async function rankTrialsForPatient(patient, opts = {}) {
         candidates_considered: candidates.length,
         ai_provider: aiProvider,
         ai_model:    aiModel,
+        ai_complete: aiComplete,
         results,
     };
 }
@@ -285,28 +316,39 @@ async function stage1FromSupabase(patient) {
 
 // ---- Result formatting ----------------------------------------------------
 
+// Blend rule score with AI confidence when we have a successful AI call;
+// otherwise the rule score stands alone. Shared by the final sort and the
+// per-result relevance_score so ordering and display always agree.
+function blendedScore(match, aiResult) {
+    const aiOk = aiResult && aiResult.ok;
+    return aiOk
+        ? Math.round(RULE_WEIGHT * match.score + AI_WEIGHT * confidenceToScore(aiResult.explanation.confidence))
+        : match.score;
+}
+
 function formatRankedResult(trial, match, index, aiResult) {
     const aiOk = aiResult && aiResult.ok;
     const aiExp = aiOk ? aiResult.explanation : null;
 
-    // Final relevance score: blend rule score with AI confidence when we have
-    // a successful AI call; otherwise fall back to the rule score unmodified.
-    const relevanceScore = aiOk
-        ? Math.round(RULE_WEIGHT * match.score + AI_WEIGHT * confidenceToScore(aiExp.confidence))
-        : match.score;
+    const relevanceScore = blendedScore(match, aiResult);
 
     // Reconcile the rule-based status with what the AI saw. The rule matcher
-    // can't read free-text exclusion criteria; the AI can. If the AI flagged
-    // exclusions or rated disease match only "partial", downgrade so the
-    // result badge doesn't claim Eligible when the AI thinks otherwise.
+    // can't read free-text exclusion criteria; the AI can. Production stance:
+    // an Eligible / Likely Eligible badge requires an explicit AI "yes" on
+    // disease match with no flagged exclusions. Anything less — "partial",
+    // flagged exclusions, or a failed AI call (trial un-vetted) — downgrades
+    // to Needs Review rather than overclaiming.
+    const upbeat = [
+        EligibilityMatcher.STATUS.ELIGIBLE,
+        EligibilityMatcher.STATUS.LIKELY_ELIGIBLE,
+    ].includes(match.status);
     let effectiveStatus = match.status;
-    if (aiOk) {
-        if (aiExp.disease_match === 'partial' && effectiveStatus === EligibilityMatcher.STATUS.LIKELY_ELIGIBLE) {
-            effectiveStatus = EligibilityMatcher.STATUS.NEEDS_REVIEW;
-        }
-        if (aiExp.relevant_exclusions.length > 0
-            && (effectiveStatus === EligibilityMatcher.STATUS.ELIGIBLE
-                || effectiveStatus === EligibilityMatcher.STATUS.LIKELY_ELIGIBLE)) {
+    if (upbeat) {
+        if (!aiOk) {
+            // AI was attempted but failed (timeout / cost cap / bad response):
+            // the trial passed rules only, so don't show a green badge.
+            if (aiResult) effectiveStatus = EligibilityMatcher.STATUS.NEEDS_REVIEW;
+        } else if (aiExp.disease_match !== 'yes' || aiExp.relevant_exclusions.length > 0) {
             effectiveStatus = EligibilityMatcher.STATUS.NEEDS_REVIEW;
         }
     }

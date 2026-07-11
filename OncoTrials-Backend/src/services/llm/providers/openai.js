@@ -36,7 +36,12 @@ async function explainTrialMatch(patient, trial, opts = {}) {
 
     const completion = await getClient().chat.completions.create({
         model:           MODEL,
-        temperature:     0.2,                // we want consistent rationales, not creativity
+        // Determinism matters more than prose variety here: the same patient
+        // + trial pair should produce the same verdict on every run. seed is
+        // best-effort on OpenAI's side but measurably reduces run-to-run
+        // drift when combined with temperature 0.
+        temperature:     0,
+        seed:            7,
         response_format: { type: 'json_object' },
         max_tokens:      500,
         messages: [

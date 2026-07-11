@@ -45,11 +45,13 @@ export default function EpicLaunchLanding() {
 
             try {
                 setStatus('matching');
-                // Every SMART launch is a fresh clinical context — bypass the
-                // 24h result cache so clinicians never see stale rankings.
-                // (The cache still serves frontend re-renders of /match/:rid
-                // via sessionStorage; this only affects re-requests to the API.)
-                const result = await requestMatch({ token, refresh: true });
+                // Use the backend result cache. The cache key is scoped to
+                // the patient's clinical criteria + the trials-corpus version,
+                // so a hit can only mean "same patient, same data" — and
+                // re-launching the same patient then gives an identical,
+                // instant ranking instead of a fresh LLM re-roll that may
+                // order things differently.
+                const result = await requestMatch({ token });
                 if (cancelled) return;
 
                 // Stash the result locally so the next page renders instantly

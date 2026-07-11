@@ -236,6 +236,9 @@ router.post('/', matchRateLimit, requireAuth, async (req, res) => {
             matched_at:   new Date().toISOString(),
             ai_provider:  ranked.ai_provider,
             ai_model:     ranked.ai_model,
+            // False when one or more AI vetting calls failed this run (the
+            // result is rule-only for those trials and was not cached).
+            ai_complete:  ranked.ai_complete,
             candidates_considered: ranked.candidates_considered,
             // De-identified patient summary echoed back so the frontend can
             // render a header card without making a second request. Same
@@ -253,11 +256,20 @@ router.post('/', matchRateLimit, requireAuth, async (req, res) => {
             cached:       false,
         };
 
-        // Cache the response for 24h. Errors here must not affect the caller.
-        try {
-            await redis.set(cacheKey, response, { ex: RESULT_CACHE_TTL_SEC });
-        } catch (err) {
-            console.error('result-cache write failed (continuing):', err);
+        // Cache the response for 24h — but only when the run was complete
+        // (every returned trial AI-vetted, or AI off by policy). A run
+        // degraded by LLM timeouts or cost caps is a worse answer than a
+        // fresh retry, so we never freeze one in the cache. Key already
+        // scopes to org + patient criteria + trials-corpus version, so a
+        // hit means "same patient, same criteria, same trial data".
+        if (ranked.ai_complete) {
+            try {
+                await redis.set(cacheKey, response, { ex: RESULT_CACHE_TTL_SEC });
+            } catch (err) {
+                console.error('result-cache write failed (continuing):', err);
+            }
+        } else {
+            console.warn('[match] skipping result-cache write: AI vetting incomplete for this run');
         }
 
         // Fire-and-forget audit write

@@ -32,6 +32,18 @@ const SYSTEM_PROMPT = [
     '  cross-disease indication that could plausibly include the patient.',
     '- Set "no" when the trial is for an unrelated disease. The orchestrator',
     '  will drop these from the results — do not soften the call to be polite.',
+    '- When genuinely torn between "yes" and "partial", choose "partial".',
+    '  When torn between "partial" and "no", choose "no". A wrong',
+    '  recommendation harms the clinician\'s trust more than a missing one.',
+    '',
+    'CONFIDENCE CALIBRATION:',
+    '- "high" only when disease_match is "yes" AND age, sex, and the major',
+    '  inclusion criteria are all explicitly satisfied by the patient input.',
+    '- "medium" when the disease matches but one or more criteria are',
+    '  unverifiable from the input.',
+    '- "low" whenever disease_match is "partial" or key data is missing.',
+    '- Judge only from the given input. Identical input must always yield',
+    '  the same verdict.',
 ].join('\n');
 
 function buildUserPrompt(patient, trial) {
