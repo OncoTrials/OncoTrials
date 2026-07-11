@@ -17,6 +17,7 @@
 
 require('dotenv').config();
 const { bumpCacheVersion, warmAllTrialsCache } = require('../services/trialsCache');
+const { purgeCdnCache } = require('../services/cdnPurge');
 
 (async () => {
     try {
@@ -24,6 +25,11 @@ const { bumpCacheVersion, warmAllTrialsCache } = require('../services/trialsCach
         console.log(`Cache version bumped → ${version}`);
         const n = await warmAllTrialsCache();
         console.log(`:all cache re-warmed with ${n} trials`);
+
+        const purge = await purgeCdnCache();
+        console.log(purge.purged
+            ? `CDN purged: ${purge.urls.join(', ')}`
+            : `CDN purge skipped (${purge.reason})`);
         process.exit(0);
     } catch (err) {
         console.error('Cache refresh failed:', err?.message || err);

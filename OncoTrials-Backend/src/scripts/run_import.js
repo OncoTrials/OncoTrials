@@ -4,6 +4,7 @@ const { fetchAndSyncStudies } = require('../services/clinicalTrialsService');
 const { getAllowedCountries } = require('../config/trialImportConfig');
 const { bumpCacheVersion, warmAllTrialsCache } = require('../services/trialsCache');
 const { logImportJob } = require('../services/clinicalTrialsDatabase');
+const { purgeCdnCache } = require('../services/cdnPurge');
 
 // TODO: Add concurrency check after deployment to prevent duplicate runs
 async function main() {
@@ -74,13 +75,14 @@ async function main() {
         console.error('Failed to refresh :all cache (continuing):', err?.message || err);
       }
 
-      // TODO(cdn-purge): the /trials?limit=all and /trials/stream responses are
-      // held at the CDN edge (s-maxage=3600, stale-while-revalidate=86400). The
-      // Redis cache above is fresh immediately, but edge copies linger up to an
-      // hour. For instant freshness after an import, invalidate the CDN here —
-      // e.g. `gcloud compute url-maps invalidate-cdn-cache <map> --path "/trials*"`
-      // (Cloud CDN) or a Firebase Hosting redeploy. Left as a follow-up so the
-      // importer doesn't need deploy credentials wired in yet.
+      // Purge the CDN edge copies of the trial-list endpoints so a fresh import
+      // is visible immediately instead of waiting out the edge TTL. No-op (and
+      // logged as such) unless Cloudflare creds + purge targets are configured
+      // — see services/cdnPurge.js. Never fails the import.
+      const purge = await purgeCdnCache();
+      console.log(purge.purged
+        ? `🧹 CDN purged: ${purge.urls.join(', ')}`
+        : `CDN purge skipped (${purge.reason})`);
     } else {
       console.log('No inserts or updates; leaving trials cache as-is.');
     }

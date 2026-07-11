@@ -124,6 +124,20 @@ SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
+Optional backend env vars:
+
+```
+# Import scoping
+ONCOLOGY_ONLY=true                 # false = import the full CT.gov corpus
+ONCOLOGY_CONDITION_QUERY=...       # override the CT.gov query.cond expression
+
+# CDN cache purge on import (Cloudflare) — no-op unless all are set
+CLOUDFLARE_API_TOKEN=...           # token with the zone's Cache Purge permission
+CLOUDFLARE_ZONE_ID=...
+PUBLIC_API_ORIGIN=https://api.trialsonco.com   # builds default purge URLs
+# CDN_PURGE_URLS=https://.../trials?limit=all,https://.../trials/stream  # explicit override
+```
+
 ---
 
 ## 🛠️ Scripts & Automation
