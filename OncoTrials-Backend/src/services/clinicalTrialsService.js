@@ -4,6 +4,7 @@ const {
     formatStudyToTrialRow,
     shouldSkipNewTrial,
     hasAllowedLocation,
+    isOncologyTrial,
     buildUpdatePayload,
     CLOSED_STATUSES,
 } = require('./clinicalTrialsProcessor');
@@ -35,6 +36,7 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
     let totalFailed = 0;
     let totalSkippedCountry = 0;
     let totalSkippedClosed = 0;
+    let totalSkippedNonOncology = 0;
     let totalUnchanged = 0;
 
     do {
@@ -51,6 +53,12 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
         const batchEntries = [];   // { row, isNew }
 
         for (const study of studies) {
+            // Oncology guard — backstop to the server-side query.cond filter.
+            if (!isOncologyTrial(study)) {
+                totalSkippedNonOncology++;
+                continue;
+            }
+
             // Country guard
             const studyLocations =
                 study.protocolSection?.contactsLocationsModule?.locations;
@@ -143,6 +151,7 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
         totalUnchanged,
         totalSkippedCountry,
         totalSkippedClosed,
+        totalSkippedNonOncology,
         durationSeconds,
     };
 }

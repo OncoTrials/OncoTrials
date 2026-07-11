@@ -34,6 +34,46 @@ const COUNTRY_ALIASES = {
     // "ca":                    "Canada",
 };
 
+// Oncology scoping
+//
+// OncoTrials only cares about cancer trials, but ClinicalTrials.gov holds
+// ~530k studies across every therapeutic area. Importing everything bloated
+// the corpus to ~24k rows (most irrelevant) and burns Supabase egress on every
+// cache warm. We now scope the import to oncology at two layers (same pattern
+// as the country filter):
+//   1. Server-side: a `query.cond` Essie expression so CT.gov only returns
+//      cancer studies (fewer pages fetched, less bandwidth).
+//   2. Client-side: isOncologyTrial() re-checks each study's condition list
+//      against ONCOLOGY_REGEX before insert, so anything the broad server
+//      query lets through is dropped locally.
+//
+// Toggle off with ONCOLOGY_ONLY=false for a full-corpus import.
+
+const ONCOLOGY_ONLY = String(process.env.ONCOLOGY_ONLY ?? 'true').toLowerCase() !== 'false';
+
+// Roots that identify an oncology condition. Matched case-insensitively with
+// word-ish boundaries against the trial's *condition* strings (not free text,
+// so "tumor necrosis factor" in a rheumatology intervention won't sneak in —
+// conditions are diseases like "Breast Cancer", not mechanisms).
+const ONCOLOGY_TERMS = [
+    'cancer', 'neoplasm', 'neoplastic', 'tumor', 'tumour',
+    'carcinoma', 'sarcoma', 'lymphoma', 'leukemia', 'leukaemia',
+    'melanoma', 'myeloma', 'malignan', 'oncolog', 'blastoma',
+    'glioma', 'glioblastoma', 'mesothelioma', 'adenocarcinoma',
+    'metastas', 'metastat', 'hodgkin', 'ewing', 'wilms',
+];
+
+const ONCOLOGY_REGEX = new RegExp(`(${ONCOLOGY_TERMS.join('|')})`, 'i');
+
+// Essie expression for the CT.gov `query.cond` parameter. OR-joins the roots;
+// CT.gov does its own stemming so "cancer" also catches "cancers", etc.
+// Overridable via ONCOLOGY_CONDITION_QUERY for tuning without a code change.
+function getOncologyConditionQuery() {
+    if (!ONCOLOGY_ONLY) return null;
+    if (process.env.ONCOLOGY_CONDITION_QUERY) return process.env.ONCOLOGY_CONDITION_QUERY;
+    return ONCOLOGY_TERMS.join(' OR ');
+}
+
 // Statuses considered closed / finished
 const CLOSED_STATUSES = new Set([
     "COMPLETED",
@@ -91,7 +131,10 @@ module.exports = {
     DEFAULT_ALLOWED_COUNTRIES,
     COUNTRY_ALIASES,
     CLOSED_STATUSES,
+    ONCOLOGY_ONLY,
+    ONCOLOGY_REGEX,
     getAllowedCountries,
     buildAllowedCountrySet,
     getAllowedCountriesForApi,
+    getOncologyConditionQuery,
 };

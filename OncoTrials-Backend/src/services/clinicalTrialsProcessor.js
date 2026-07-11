@@ -3,6 +3,8 @@
 const {
     CLOSED_STATUSES,
     buildAllowedCountrySet,
+    ONCOLOGY_ONLY,
+    ONCOLOGY_REGEX,
 } = require('../config/trialImportConfig');
 
 // Gene list for naive biomarker extraction.
@@ -77,6 +79,24 @@ function filterAllowedLocations(locations) {
     if (!Array.isArray(locations)) return [];
     const allowed = buildAllowedCountrySet();
     return locations.filter((loc) => allowed.has(getLocationCountry(loc)));
+}
+
+// Oncology guard
+//
+// Client-side backstop to the server-side query.cond filter: confirm the study
+// actually studies a cancer by matching its condition list (falling back to
+// its browse-condition mesh terms) against ONCOLOGY_REGEX. Checking the
+// structured condition fields — not free-text summary — avoids false hits from
+// mechanism names like "tumor necrosis factor".
+function isOncologyTrial(study) {
+    if (!ONCOLOGY_ONLY) return true;
+    const protocolSection = study.protocolSection || {};
+    const conditions = protocolSection.conditionsModule?.conditions || [];
+    const meshTerms = (study.derivedSection?.conditionBrowseModule?.meshes || [])
+        .map((m) => m.term)
+        .filter(Boolean);
+    const haystack = [...conditions, ...meshTerms].join(' ');
+    return ONCOLOGY_REGEX.test(haystack);
 }
 
 // Core row formatter
@@ -208,6 +228,7 @@ module.exports = {
     formatStudyToTrialRow,
     shouldSkipNewTrial,
     hasAllowedLocation,
+    isOncologyTrial,
     filterAllowedLocations,
     buildUpdatePayload,
     CLOSED_STATUSES,

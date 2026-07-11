@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "refresh-cache": "node src/scripts/refresh_trials_cache.js"
   },
   "keywords": [],
   "author": "",

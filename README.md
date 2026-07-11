@@ -131,26 +131,35 @@ SUPABASE_SERVICE_ROLE_KEY=...
 The project includes several utility scripts for managing the clinical trials database. These are located in `OncoTrials-Backend/src/scripts/`.
 
 ### 🔄 Trial Import
-Fetches and syncs trials from ClinicalTrials.gov.
+Fetches and syncs trials from ClinicalTrials.gov. **Oncology-only by default** —
+the import is scoped to cancer trials both server-side (CT.gov `query.cond`) and
+client-side (`isOncologyTrial` guard), so unrelated conditions are never
+ingested. Set `ONCOLOGY_ONLY=false` for a full-corpus import.
 ```bash
-# Run the import (Incremental by default)
+# Run the import (Incremental + oncology-only by default)
 node OncoTrials-Backend/src/scripts/run_import.js
 ```
 
-### 🧹 Database Cleanup
-Removes expired trials (closed status or past dates) or trials from non-allowed countries.
+### ♻️ Refresh the read cache
+Rebuilds the Redis trial cache the API serves from — run after a direct DB
+change (e.g. a SQL migration) so `/trials` stops returning stale values.
 ```bash
-# Remove expired trials (Dry Run)
-node OncoTrials-Backend/src/scripts/remove_expired_trials.js
+cd OncoTrials-Backend && npm run refresh-cache
+```
 
-# Remove expired trials (Live Deletion)
-node OncoTrials-Backend/src/scripts/remove_expired_trials.js --live
+### 🧹 Database Cleanup
+Removes expired trials, non-allowed-country trials, or non-oncology trials.
+All default to a dry run; pass `--live` to delete. After a live deletion, run
+`npm run refresh-cache`.
+```bash
+# Remove expired trials
+node OncoTrials-Backend/src/scripts/remove_expired_trials.js [--live]
 
-# Remove trials from non-allowed countries (Dry Run)
-node OncoTrials-Backend/src/scripts/remove_non_allowed_country_trials.js
+# Remove trials from non-allowed countries
+node OncoTrials-Backend/src/scripts/remove_non_allowed_country_trials.js [--live]
 
-# Remove trials from non-allowed countries (Live Deletion)
-node OncoTrials-Backend/src/scripts/remove_non_allowed_country_trials.js --live
+# Remove non-oncology trials (prunes the pre-oncology-filter corpus)
+node OncoTrials-Backend/src/scripts/remove_non_oncology_trials.js [--live]
 ```
 
 ---

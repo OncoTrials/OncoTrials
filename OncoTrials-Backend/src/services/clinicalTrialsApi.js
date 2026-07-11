@@ -1,6 +1,6 @@
 // src/services/clinicalTrialsApi.js
 const axios = require("axios");
-const { getAllowedCountriesForApi } = require('../config/trialImportConfig');
+const { getAllowedCountriesForApi, getOncologyConditionQuery } = require('../config/trialImportConfig');
 
 const BASE_URL = process.env.CTGOV_BASE_URL ||
     "https://clinicaltrials.gov/api/v2/studies";
@@ -37,6 +37,11 @@ async function fetchStudiesPage({ query = "", pageToken = null, lastUpdatePostDa
         term = term ? `(${term}) AND ${dateFilter}` : dateFilter;
     }
     if (term) params["query.term"] = term;
+
+    // Server-side oncology filter: CT.gov only returns cancer studies, so we
+    // never download (or paginate through) the ~500k non-oncology trials.
+    const condQuery = getOncologyConditionQuery();
+    if (condQuery) params["query.cond"] = condQuery;
 
     // Always sort by last update to get newest first (helps with incremental sync)
     params.sort = "LastUpdatePostDate:desc";

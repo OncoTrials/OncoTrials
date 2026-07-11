@@ -29,12 +29,22 @@ const setCached = (key, data) => redis.set(key, data, { ex: CACHE_TTL_SECONDS })
 //     never block on Supabase pagination — only the very first call after
 //     a fresh deploy will trigger a lazy warm.
 router.get('/', async (req, res) => {
-    // 5 minutes in both browser and CDN. The Redis cache-version scheme
-    // invalidates instantly on import, but a CDN can't see version bumps —
-    // a long s-maxage would pin stale data for up to a day after an import.
-    res.set('Cache-Control', 'public, max-age=300, s-maxage=300');
-
     const wantAll = String(req.query.limit || '').toLowerCase() === 'all';
+
+    // Caching is split by how the two paths behave:
+    //   • limit=all is the big "Browse All" payload. It changes only when the
+    //     importer runs (a few times/day), so we let the CDN hold it for an
+    //     hour and serve stale-while-revalidate for a day — the edge answers
+    //     instantly and refreshes in the background, keeping Upstash reads and
+    //     origin work low. Purge the CDN on import for immediate freshness
+    //     (see TODO(cdn-purge) in run_import.js).
+    //   • the paginated path is cheap; keep it short so edits show up fast.
+    // The Redis cache-version scheme still invalidates the origin instantly on
+    // import regardless; s-maxage only governs the CDN edge copy.
+    res.set('Cache-Control', wantAll
+        ? 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400'
+        : 'public, max-age=300, s-maxage=300');
+
     const version = await getCacheVersion();
 
     // ---- limit=all path: served from the importer-maintained Redis cache ---

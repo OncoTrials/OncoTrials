@@ -37,8 +37,10 @@ async function main() {
     - Trials inserted: ${result.totalInserted}
     - Trials updated (changed): ${result.totalUpdated}
     - Trials unchanged: ${result.totalUnchanged}
+    - Skipped (non-oncology): ${result.totalSkippedNonOncology}
     - Skipped (wrong country): ${result.totalSkippedCountry}
     - Skipped (closed/completed): ${result.totalSkippedClosed}
+    - Upsert failures: ${result.totalFailed}
     - Finished at: ${endTime.toISOString()}
     `);
 
@@ -71,6 +73,14 @@ async function main() {
       } catch (err) {
         console.error('Failed to refresh :all cache (continuing):', err?.message || err);
       }
+
+      // TODO(cdn-purge): the /trials?limit=all and /trials/stream responses are
+      // held at the CDN edge (s-maxage=3600, stale-while-revalidate=86400). The
+      // Redis cache above is fresh immediately, but edge copies linger up to an
+      // hour. For instant freshness after an import, invalidate the CDN here —
+      // e.g. `gcloud compute url-maps invalidate-cdn-cache <map> --path "/trials*"`
+      // (Cloud CDN) or a Firebase Hosting redeploy. Left as a follow-up so the
+      // importer doesn't need deploy credentials wired in yet.
     } else {
       console.log('No inserts or updates; leaving trials cache as-is.');
     }
