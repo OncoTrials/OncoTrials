@@ -1,5 +1,11 @@
 // Sliding-window rate limiter backed by our shared Redis (Upstash in prod,
-// in-memory in dev). Per-IP and per-authenticated-subject limits.
+// in-memory in dev). Split into two middlewares:
+//
+//   ipRateLimit      — runs BEFORE auth. Protects the auth path itself
+//                      (each auth attempt costs a Supabase getUser call).
+//   subjectRateLimit — runs AFTER auth, keyed on req.user.id. Previously this
+//                      ran pre-auth where req.user was never set, so the
+//                      per-subject limit silently collapsed into the IP limit.
 //
 // Why not express-rate-limit + rate-limit-redis? The latter expects a
 // node-redis-shaped client. Our Upstash client has a different shape; rather
@@ -8,7 +14,7 @@
 //
 // Limits (per minute window):
 //   - per IP:     120 req/min
-//   - per sub:     60 req/min   (sub = req.user.id when set, else IP)
+//   - per sub:     60 req/min
 //
 // 429 response includes `Retry-After: <seconds>`.
 
@@ -23,41 +29,61 @@ function currentWindowBucket() {
     return Math.floor(Date.now() / 1000 / WINDOW_SECONDS);
 }
 
+// Client IP for rate-limiting. X-Forwarded-For is client-supplied except for
+// the entry the platform's proxy appends — on Cloud Run, Google's front end
+// appends the real client IP as the LAST entry. Taking the first entry (the
+// old behavior) let callers spoof a fresh "IP" per request and bypass the
+// limit entirely.
+function clientIp(req) {
+    const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (xff.length > 0) return xff[xff.length - 1];
+    return req.socket?.remoteAddress || 'unknown';
+}
+
 async function incrAndCheck(key, limit) {
     const next = await redis.incrBy(key, 1);
-    if (next === 1) await redis.expire(key, WINDOW_SECONDS * 2);
+    if (Number(next) === 1) await redis.expire(key, WINDOW_SECONDS * 2);
     return { count: Number(next), allowed: Number(next) <= limit };
 }
 
-async function matchRateLimit(req, res, next) {
+function setLimitHeaders(res, bucket, limit, count) {
+    res.setHeader('X-RateLimit-Limit',     String(limit));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, limit - count)));
+    res.setHeader('X-RateLimit-Reset',     String((bucket + 1) * WINDOW_SECONDS));
+}
+
+function reject429(res, bucket) {
+    const retryAfter = ((bucket + 1) * WINDOW_SECONDS) - Math.floor(Date.now() / 1000);
+    res.setHeader('Retry-After', String(Math.max(1, retryAfter)));
+    return res.status(429).json({ error: 'Too many requests' });
+}
+
+async function ipRateLimit(req, res, next) {
     const bucket = currentWindowBucket();
-    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
-    const sub = req.user?.id || ip;   // pre-auth requests fall back to IP
-
     try {
-        const [ipResult, subResult] = await Promise.all([
-            incrAndCheck(`rl:ip:${ip}:${bucket}`,   IP_LIMIT),
-            incrAndCheck(`rl:sub:${sub}:${bucket}`, SUBJECT_LIMIT),
-        ]);
-
-        const allowed = ipResult.allowed && subResult.allowed;
-        // Always report the *tighter* limit headers so callers can self-throttle.
-        const remaining = Math.max(0, Math.min(IP_LIMIT - ipResult.count, SUBJECT_LIMIT - subResult.count));
-        res.setHeader('X-RateLimit-Limit',     String(Math.min(IP_LIMIT, SUBJECT_LIMIT)));
-        res.setHeader('X-RateLimit-Remaining', String(remaining));
-        res.setHeader('X-RateLimit-Reset',     String((bucket + 1) * WINDOW_SECONDS));
-
-        if (!allowed) {
-            const retryAfter = ((bucket + 1) * WINDOW_SECONDS) - Math.floor(Date.now() / 1000);
-            res.setHeader('Retry-After', String(Math.max(1, retryAfter)));
-            return res.status(429).json({ error: 'Too many requests' });
-        }
+        const result = await incrAndCheck(`rl:ip:${clientIp(req)}:${bucket}`, IP_LIMIT);
+        setLimitHeaders(res, bucket, IP_LIMIT, result.count);
+        if (!result.allowed) return reject429(res, bucket);
         next();
     } catch (err) {
         // Never block traffic on a rate-limiter Redis failure — log and pass.
-        console.error('rateLimit lookup failed (allowing request):', err);
+        console.error('ipRateLimit lookup failed (allowing request):', err);
         next();
     }
 }
 
-module.exports = { matchRateLimit };
+async function subjectRateLimit(req, res, next) {
+    const bucket = currentWindowBucket();
+    const sub = req.user?.id || clientIp(req);   // auth guarantees user; IP fallback just in case
+    try {
+        const result = await incrAndCheck(`rl:sub:${sub}:${bucket}`, SUBJECT_LIMIT);
+        setLimitHeaders(res, bucket, SUBJECT_LIMIT, result.count);
+        if (!result.allowed) return reject429(res, bucket);
+        next();
+    } catch (err) {
+        console.error('subjectRateLimit lookup failed (allowing request):', err);
+        next();
+    }
+}
+
+module.exports = { ipRateLimit, subjectRateLimit };

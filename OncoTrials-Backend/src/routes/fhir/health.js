@@ -15,6 +15,16 @@ const express = require('express');
 const router = express.Router();
 
 router.get('/', (req, res) => {
+    // Optional shared-secret gate. Set FHIR_HEALTH_KEY in prod and pass it as
+    // ?key=... or an X-Health-Key header; wrong/missing key gets a 404 so the
+    // endpoint doesn't advertise itself. Left open when the env var is unset
+    // (local dev). Even open, this returns booleans and non-secret URLs only —
+    // the gate just removes the free config-reconnaissance surface.
+    const requiredKey = process.env.FHIR_HEALTH_KEY;
+    if (requiredKey && req.query.key !== requiredKey && req.headers['x-health-key'] !== requiredKey) {
+        return res.status(404).end();
+    }
+
     const clientId = process.env.EPIC_CLIENT_ID || null;
 
     res.json({

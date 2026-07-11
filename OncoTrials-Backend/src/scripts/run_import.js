@@ -3,6 +3,7 @@ require('dotenv').config();
 const { fetchAndSyncStudies } = require('../services/clinicalTrialsService');
 const { getAllowedCountries } = require('../config/trialImportConfig');
 const { bumpCacheVersion, warmAllTrialsCache } = require('../services/trialsCache');
+const { logImportJob } = require('../services/clinicalTrialsDatabase');
 
 // TODO: Add concurrency check after deployment to prevent duplicate runs
 async function main() {
@@ -89,6 +90,13 @@ async function main() {
       success: false,
     };
     console.log('IMPORT_RESULT_JSON:', JSON.stringify(logEntry));
+
+    // Record the failure so getLastSuccessfulImportDate (which filters on
+    // error_text IS NULL) never treats a crashed run as a sync baseline.
+    await logImportJob({
+      duration_seconds: duration,
+      error_text: String(error.message || error).slice(0, 1000),
+    });
 
     process.exit(1);
   }

@@ -21,9 +21,12 @@
 //       "patientRef":        "<opaque caller-side ID>"   // optional; hashed for audit
 //     },
 //     "limit":       20,            // optional, 1..20
-//     "orgId":       "<uuid>",      // optional; if present we apply per-org budget + consent
 //     "aiProvider":  "openai"       // optional; defaults to env DEFAULT_LLM_PROVIDER
 //   }
+//
+// Org membership is resolved SERVER-SIDE (SMART JWT claim, or the caller's
+// email domain against organizations.valid_domains). A body-supplied orgId is
+// ignored — it previously allowed consent bypass and cross-org budget burn.
 
 const crypto = require('crypto');
 const express = require('express');
@@ -34,7 +37,8 @@ const { redis } = require('../../../db/redisClient');
 const { requireAuth } = require('../../../middleware/auth');
 const { rankTrialsForPatient } = require('../../../services/trialRanker');
 const fhirContextStore = require('../../../services/fhirContextStore');
-const { matchRateLimit } = require('../../../middleware/rateLimit');
+const { ipRateLimit, subjectRateLimit } = require('../../../middleware/rateLimit');
+const { findOrgForEmail } = require('../../../services/domainVerification');
 const { getCacheVersion: getTrialsCacheVersion } = require('../../../services/trialsCache');
 
 const MAX_LIMIT             = 20;
@@ -43,6 +47,15 @@ const PEPPER                = process.env.PATIENT_HASH_PEPPER || '';
 
 // ---- Patient validation -------------------------------------------------
 
+// Length caps: these strings flow into the LLM prompt and back out in the
+// response. Unbounded input means unbounded token spend and log inflation.
+const MAX_FIELD_CHARS   = 200;
+const MAX_THERAPIES     = 10;
+
+const capStr = (v) => (typeof v === 'string' ? v.slice(0, MAX_FIELD_CHARS) : null);
+
+// Validates AND sanitizes: only whitelisted fields survive, so a caller can't
+// smuggle arbitrary extra fields into the LLM prompt or the audit trail.
 function validatePatient(body) {
     const errors = [];
     const p = body?.patient;
@@ -68,8 +81,23 @@ function validatePatient(body) {
     if (!p.cancerType || typeof p.cancerType !== 'string' || !p.cancerType.trim()) {
         errors.push('patient.cancerType is required');
     }
+    if (errors.length > 0) return { errors };
 
-    return { errors, patient: p };
+    const patient = {
+        age:               p.age != null ? Number(p.age) : null,
+        gender:            capStr(p.gender),
+        cancerType:        capStr(p.cancerType),
+        cancerStage:       capStr(p.cancerStage),
+        mutationBiomarker: capStr(p.mutationBiomarker),
+        ecog:              p.ecog != null ? Number(p.ecog) : null,
+        lineOfTreatment:   p.lineOfTreatment != null ? Number(p.lineOfTreatment) : null,
+        patientRef:        capStr(p.patientRef),
+        priorTherapies:    Array.isArray(p.priorTherapies)
+            ? p.priorTherapies.slice(0, MAX_THERAPIES).map((t) => String(t).slice(0, MAX_FIELD_CHARS))
+            : [],
+    };
+
+    return { errors, patient };
 }
 
 // ---- Audit helpers ------------------------------------------------------
@@ -127,12 +155,35 @@ async function writeAuditRow(row) {
     }
 }
 
-// ---- Org consent + budget lookup ---------------------------------------
+// ---- Org resolution + consent/budget lookup -----------------------------
 
-// Returns { withAi, orgCapUsd }. If the org has not granted AI consent, we
-// skip Stage 3 entirely and return a rule-only ranking.
+// Which org does this caller belong to? NEVER read from the request body —
+// a caller-supplied orgId could bypass another org's AI consent, drain its
+// LLM budget, and poison org-scoped cache keys. SMART launches carry the org
+// in the session JWT (mapped from `iss` at callback time); Supabase users are
+// resolved from their email domain.
+async function resolveOrgId(user) {
+    if (user?.source === 'smart_launch') return user.orgId ?? null;
+    if (!user?.email) return null;
+    try {
+        const org = await findOrgForEmail(user.email);
+        return org?.id ?? null;
+    } catch (err) {
+        console.error('resolveOrgId failed (treating as org-less):', err?.message || err);
+        return null;
+    }
+}
+
+// Returns { withAi, orgCapUsd }. Consent semantics:
+//   - Caller bound to an org  → the org must have explicitly opted in
+//     (ai_provider_consent = true). Lookup failure counts as NO consent —
+//     for patient data, fail-safe means fail-closed.
+//   - Org-less caller (no domain match / SMART launch before org mapping) →
+//     platform default applies: AI on unless ALLOW_AI_WITHOUT_ORG=false.
 async function loadOrgPolicy(orgId) {
-    if (!orgId) return { withAi: true, orgCapUsd: null };
+    if (!orgId) {
+        return { withAi: process.env.ALLOW_AI_WITHOUT_ORG !== 'false', orgCapUsd: null };
+    }
 
     try {
         const { data, error } = await supabase
@@ -140,20 +191,23 @@ async function loadOrgPolicy(orgId) {
             .select('ai_provider_consent, daily_llm_budget_usd')
             .eq('id', orgId)
             .single();
-        if (error || !data) return { withAi: true, orgCapUsd: null };
+        if (error || !data) {
+            console.error('loadOrgPolicy lookup failed; disabling AI for this request:', error?.message);
+            return { withAi: false, orgCapUsd: null };
+        }
         return {
-            withAi:    data.ai_provider_consent !== false,   // default-allow if column missing
+            withAi:    data.ai_provider_consent === true,
             orgCapUsd: data.daily_llm_budget_usd ?? null,
         };
     } catch (err) {
-        console.error('loadOrgPolicy failed:', err);
-        return { withAi: true, orgCapUsd: null };
+        console.error('loadOrgPolicy failed; disabling AI for this request:', err);
+        return { withAi: false, orgCapUsd: null };
     }
 }
 
 // ---- Route --------------------------------------------------------------
 
-router.post('/', matchRateLimit, requireAuth, async (req, res) => {
+router.post('/', ipRateLimit, requireAuth, subjectRateLimit, async (req, res) => {
     const startedAt = Date.now();
 
     // Two patient-input paths:
@@ -194,7 +248,7 @@ router.post('/', matchRateLimit, requireAuth, async (req, res) => {
     }
 
     const requestedLimit = Math.min(Math.max(parseInt(req.body?.limit, 10) || MAX_LIMIT, 1), MAX_LIMIT);
-    const orgId          = req.user?.orgId ?? req.body?.orgId ?? null;
+    const orgId          = await resolveOrgId(req.user);   // server-derived; body orgId is ignored
     const providerName   = req.body?.aiProvider ?? null;
     const skipCache      = req.query?.refresh === '1';
 

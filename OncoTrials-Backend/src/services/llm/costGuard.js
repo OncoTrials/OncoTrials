@@ -1,10 +1,11 @@
 // costGuard.js — two-tier daily LLM spend cap (per-org + global).
 //
-// Behaviour:
-//   - Before each LLM call, ask `canSpend(orgId, estimatedCostUsd)`. If either
-//     cap would be exceeded, fall back to a rule-only response and skip the
-//     LLM entirely.
-//   - After each LLM call, record actual spend with `recordSpend(orgId, actualCostUsd)`.
+// Behaviour (reserve/settle, so parallel calls cannot race past the cap):
+//   - Before each LLM call, `reserveSpend(orgId, estimatedCostUsd)` atomically
+//     adds the estimate to the counters and checks the result. Denied
+//     reservations are refunded; callers fall back to a rule-only response.
+//   - After the call, `settleSpend(orgId, estimate, actualCostUsd)` adjusts
+//     the counters to the actual cost (0 on failure = full refund).
 //   - Both per-org and global counters live in Redis with a TTL just past
 //     midnight so they self-clean.
 //
@@ -48,63 +49,70 @@ function todayKey() {
 function orgKey(orgId)  { return `llm:spend:org:${orgId ?? 'anonymous'}:${todayKey()}`; }
 function globalKey()    { return `llm:spend:global:${todayKey()}`; }
 
-async function getCurrentSpend(key) {
-    const raw = await redis.get(key);
-    if (raw == null) return 0;
-    return Number(raw) || 0;
-}
-
 /**
- * @param {string|null} orgId
- * @param {number} estimatedCostUsd
+ * Reserve budget BEFORE an LLM call: atomically add the estimate to both
+ * counters, then check the resulting totals. Because each caller's increment
+ * is included in the total it checks, N parallel calls can no longer all pass
+ * a stale pre-check and collectively blow the cap (the old check-then-record
+ * race allowed ~10x overshoot per match request).
+ *
+ * If the reservation lands over a cap, it is refunded and denied.
+ * Pair every successful reservation with settleSpend() (even on LLM failure).
+ *
  * @returns {Promise<{allowed: boolean, reason?: string, orgSpend?: number, globalSpend?: number, orgCap?: number, globalCap?: number}>}
  */
-async function canSpend(orgId, estimatedCostUsd, opts = {}) {
+async function reserveSpend(orgId, estimatedCostUsd, opts = {}) {
     const orgCap = clampOrgCap(Number(opts.orgCapUsd ?? DEFAULT_ORG_DAILY_USD));
+    const oKey = orgKey(orgId);
+    const gKey = globalKey();
 
-    const [orgSpend, globalSpend] = await Promise.all([
-        getCurrentSpend(orgKey(orgId)),
-        getCurrentSpend(globalKey()),
+    const [orgSpend, globalSpend] = (await Promise.all([
+        redis.incrByFloat(oKey, estimatedCostUsd),
+        redis.incrByFloat(gKey, estimatedCostUsd),
+    ])).map(Number);
+
+    await Promise.all([
+        redis.expire(oKey, COUNTER_TTL_SECONDS),
+        redis.expire(gKey, COUNTER_TTL_SECONDS),
     ]);
 
-    if (globalSpend + estimatedCostUsd > GLOBAL_DAILY_USD) {
+    const overGlobal = globalSpend > GLOBAL_DAILY_USD;
+    const overOrg    = orgSpend > orgCap;
+    if (overGlobal || overOrg) {
+        // Refund the reservation so a denied call doesn't consume budget.
+        await Promise.all([
+            redis.incrByFloat(oKey, -estimatedCostUsd),
+            redis.incrByFloat(gKey, -estimatedCostUsd),
+        ]);
         return {
             allowed: false,
-            reason:  'global_daily_cap_exceeded',
-            orgSpend, globalSpend, orgCap, globalCap: GLOBAL_DAILY_USD,
-        };
-    }
-    if (orgSpend + estimatedCostUsd > orgCap) {
-        return {
-            allowed: false,
-            reason:  'org_daily_cap_exceeded',
-            orgSpend, globalSpend, orgCap, globalCap: GLOBAL_DAILY_USD,
+            reason:  overGlobal ? 'global_daily_cap_exceeded' : 'org_daily_cap_exceeded',
+            orgSpend: orgSpend - estimatedCostUsd,
+            globalSpend: globalSpend - estimatedCostUsd,
+            orgCap, globalCap: GLOBAL_DAILY_USD,
         };
     }
 
-    return {
-        allowed: true,
-        orgSpend, globalSpend, orgCap, globalCap: GLOBAL_DAILY_USD,
-    };
+    return { allowed: true, orgSpend, globalSpend, orgCap, globalCap: GLOBAL_DAILY_USD };
 }
 
 /**
- * Record actual spend after an LLM call completes. Increments both counters
- * atomically (well — best-effort; Redis INCRBYFLOAT is atomic per-key, but the
- * two-key update is not transactional. Acceptable for budget enforcement; we
- * fail-safe by checking again on next call).
+ * Settle a reservation once the call finishes: adjust the counters from the
+ * estimate to the actual cost (actual = 0 refunds a failed call entirely).
+ * Threshold alerts fire here, on the settled totals.
  */
-async function recordSpend(orgId, actualCostUsd, opts = {}) {
-    if (!Number.isFinite(actualCostUsd) || actualCostUsd <= 0) return;
+async function settleSpend(orgId, estimatedCostUsd, actualCostUsd, opts = {}) {
+    const actual = Number.isFinite(actualCostUsd) && actualCostUsd > 0 ? actualCostUsd : 0;
+    const delta  = actual - estimatedCostUsd;
 
     const oKey = orgKey(orgId);
     const gKey = globalKey();
     const orgCap = clampOrgCap(Number(opts.orgCapUsd ?? DEFAULT_ORG_DAILY_USD));
 
-    const [newOrgSpend, newGlobalSpend] = await Promise.all([
-        redis.incrByFloat(oKey, actualCostUsd),
-        redis.incrByFloat(gKey, actualCostUsd),
-    ]);
+    const [newOrgSpend, newGlobalSpend] = (await Promise.all([
+        redis.incrByFloat(oKey, delta),
+        redis.incrByFloat(gKey, delta),
+    ])).map(Number);
 
     // Refresh TTLs (incr resets them if the key was newly created in some
     // backends — Upstash preserves TTL across INCR, but EXPIRE is cheap and
@@ -115,13 +123,14 @@ async function recordSpend(orgId, actualCostUsd, opts = {}) {
     ]);
 
     // Threshold alerts. Cross-checking previous-vs-current avoids spamming
-    // alerts on every call after the threshold is crossed.
-    const prevOrgSpend    = Number(newOrgSpend) - actualCostUsd;
-    const prevGlobalSpend = Number(newGlobalSpend) - actualCostUsd;
-    maybeAlert('org',    orgId, prevOrgSpend,    Number(newOrgSpend),    orgCap);
-    maybeAlert('global', null,  prevGlobalSpend, Number(newGlobalSpend), GLOBAL_DAILY_USD);
+    // alerts on every call after the threshold is crossed. Only meaningful
+    // when the counter moved up (delta > 0).
+    if (delta > 0) {
+        maybeAlert('org',    orgId, newOrgSpend - delta,    newOrgSpend,    orgCap);
+        maybeAlert('global', null,  newGlobalSpend - delta, newGlobalSpend, GLOBAL_DAILY_USD);
+    }
 
-    return { orgSpend: Number(newOrgSpend), globalSpend: Number(newGlobalSpend) };
+    return { orgSpend: newOrgSpend, globalSpend: newGlobalSpend };
 }
 
 function maybeAlert(scope, scopeId, prev, current, cap) {
@@ -150,8 +159,8 @@ function maybeAlert(scope, scopeId, prev, current, cap) {
 }
 
 module.exports = {
-    canSpend,
-    recordSpend,
+    reserveSpend,
+    settleSpend,
     // exported for tests / debugging
     _todayKey: todayKey,
     _orgKey:   orgKey,

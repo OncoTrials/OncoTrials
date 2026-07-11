@@ -77,9 +77,10 @@ export function RequireAuth({ redirectTo, allowedRoles }) {
     // Not logged in → redirect
     if (!session) return <Navigate to={redirectTo} replace />;
 
-    // Check role if provided
-    const profileRole = role || user?.user_metadata?.role; // fallback
-    if (allowedRoles && !allowedRoles.includes(profileRole)) {
+    // Check role if provided. Role comes only from public.users — never from
+    // user_metadata, which any user can rewrite on their own account via
+    // supabase.auth.updateUser() (self-service role escalation).
+    if (allowedRoles && !allowedRoles.includes(role)) {
         return <Navigate to="/" replace />;
     }
 

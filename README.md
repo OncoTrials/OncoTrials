@@ -51,7 +51,17 @@ OncoTrials is a web-based platform that helps patients discover personalized cli
 | ------ | ------------- | -------------------------- | --------- |
 | GET    | `/trials`     | List all trials            | Public    |
 | GET    | `/trials/:id` | Fetch specific trial by ID | Public    |
-| POST   | `/trials`     | Create a new trial         | CRC       |
+| POST   | `/trials`     | Create a new trial         | Physician / CRC (org-scoped) |
+
+**Org scoping on POST /trials:** the caller must hold the `practitioner` or `crc` role (from `public.users`), and the backend derives their organization from their email domain against `organizations.valid_domains`. The new trial is stamped with that `org_id` and `created_by` — callers cannot create trials under another organization. Direct Supabase inserts into `trials` are blocked by RLS; all writes go through this endpoint.
+
+### Match
+
+| Method | Endpoint        | Description                                   | Auth |
+| ------ | --------------- | --------------------------------------------- | ---- |
+| POST   | `/api/v1/match` | Rank trials for a patient (rules + AI vetting) | Supabase JWT or SMART session JWT |
+
+Org membership for `/api/v1/match` is also resolved server-side (SMART JWT claim or email domain). Per-org AI consent (`organizations.ai_provider_consent`) is opt-in: org-bound callers only get the AI explainer once their org has consented.
 
 ### Auth
 
@@ -68,8 +78,7 @@ OncoTrials is a web-based platform that helps patients discover personalized cli
   "metadata": {
     "title": "Phase II Breast Cancer Immunotherapy Trial",
     "summary": "Investigating the effects of drug ABC on HER2+ breast cancer.",
-    "phase": "II",
-    "condition": "HER2+ Breast Cancer",
+    "conditions": ["HER2+ Breast Cancer"],
     "status": "Recruiting",
     "sponsor": "Cancer Research Org",
     "location_city": "Toronto",
@@ -82,6 +91,8 @@ OncoTrials is a web-based platform that helps patients discover personalized cli
   "eligibilityCriteria": "Patients must be HER2+ and over 18 years old."
 }
 ```
+
+Requires `Authorization: Bearer <supabase JWT>`. `org_id` and `created_by` are set server-side and cannot be supplied.
 
 ---
 
@@ -181,6 +192,12 @@ Download the **Google Cloud Console** app on Android to:
 
 ## 🧪 Testing
 
+* Backend unit tests (eligibility matcher, patient normalizer, biomarker extraction):
+
+  ```bash
+  cd OncoTrials-Backend
+  npm test
+  ```
 * Use **Postman** or **Insomnia** to test `/trials` endpoints
 * Ensure valid JWT token is included in Authorization header
 * Example header:
@@ -188,6 +205,13 @@ Download the **Google Cloud Console** app on Android to:
   ```
   Authorization: Bearer <JWT>
   ```
+
+## 🗄️ Database Migrations
+
+SQL migrations live in `OncoTrials-Backend/migrations/`, numbered in apply
+order. They are applied to the hosted Supabase project via the SQL editor (or
+the Supabase MCP in write mode) — see each file's header comment for what it
+does and why.
 
 ---
 

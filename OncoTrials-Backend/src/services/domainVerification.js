@@ -44,4 +44,24 @@ const checkDomain = async (organizationId, email) => {
     return classify(email, organization);
 };
 
-module.exports = { STATUS, checkDomain, classify, extractDomain };
+// Resolve which organization a user belongs to from their email domain.
+// Server-side only — this is what lets routes trust org membership instead of
+// a caller-supplied orgId. Excluded domains (student/alumni) never qualify.
+// Returns the matching org row ({ id, name }) or null.
+const findOrgForEmail = async (email) => {
+    const domain = extractDomain(email);
+    if (!domain) return null;
+
+    // Domains are stored lowercase; extractDomain lowercases too, so the
+    // array-contains prefilter is safe. classify() re-checks the excluded list.
+    const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, valid_domains, excluded_domains')
+        .contains('valid_domains', [domain]);
+    if (error) throw error;
+
+    const org = (data ?? []).find((o) => classify(email, o) === STATUS.VALID) || null;
+    return org ? { id: org.id, name: org.name } : null;
+};
+
+module.exports = { STATUS, checkDomain, classify, extractDomain, findOrgForEmail };

@@ -5,6 +5,16 @@ node_modules/
 .env
 .env.local
 .env.*.local
+scripts/.supabase_backup_env
+
+# Local tooling config (may hold project refs/tokens)
+.mcp.json
+.gemini/
+
+# Runtime output and local exports
+*.log
+*.zip
+*.gz
 
 # Logs
 npm-debug.log*

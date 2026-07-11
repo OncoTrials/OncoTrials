@@ -105,8 +105,10 @@ class EligibilityMatcher {
             return this.STATUS.NOT_ELIGIBLE;
         }
 
-        const hasMissingCriticalInfo =
-            reasons.missing_information.length > 0 || reasons.notes.length > 0;
+        // Only genuinely missing data blocks the top badge. Notes are benign
+        // observations ("Trial does not restrict sex.") added on most paths —
+        // counting them made LIKELY_ELIGIBLE effectively unreachable.
+        const hasMissingCriticalInfo = reasons.missing_information.length > 0;
 
         if (score >= 85 && !hasMissingCriticalInfo) return this.STATUS.LIKELY_ELIGIBLE;
         if (score >= 70 && reasons.failed_inclusion.length === 0) return this.STATUS.ELIGIBLE;
@@ -391,6 +393,33 @@ class EligibilityMatcher {
         });
     }
 
+    // Pull the set of stage tokens ('i'..'iv', 'metastatic', 'advanced') a
+    // piece of text refers to. Word-boundary matching, longest roman numeral
+    // first — the old substring approach let "stage i" fire on "stage iv" and
+    // let the patient side match on a bare letter, so the check almost always
+    // "passed" and just added score noise. Arabic numerals (Stage 4) map to
+    // their roman equivalents. Stage IV and "metastatic" are treated as
+    // equivalent, as are III/IV and "advanced" (common trial shorthand).
+    static extractStageTokens(text) {
+        const tokens = new Set();
+        if (!text) return tokens;
+        const t = String(text).toLowerCase();
+
+        const ROMAN = { 1: 'i', 2: 'ii', 3: 'iii', 4: 'iv' };
+        const re = /\bstage\s+(iv|iii|ii|i|[1-4])\b/g;
+        let m;
+        while ((m = re.exec(t))) {
+            tokens.add(ROMAN[m[1]] || m[1]);
+        }
+        if (/\bmetastatic\b/.test(t)) tokens.add('metastatic');
+        if (/\badvanced\b/.test(t))   tokens.add('advanced');
+
+        if (tokens.has('iv'))  { tokens.add('metastatic'); }
+        if (tokens.has('metastatic')) { tokens.add('iv'); }
+        if (tokens.has('advanced'))   { tokens.add('iii'); tokens.add('iv'); }
+        return tokens;
+    }
+
     static checkCancerStage(patient, trial, inclusionCriteria) {
         const patientStage = patient?.cancerStage?.toLowerCase()?.trim();
         const text = [
@@ -398,26 +427,38 @@ class EligibilityMatcher {
             trial?.study_description || '',
         ].join(' ').toLowerCase();
 
-        const stageKeywords = ['stage i', 'stage ii', 'stage iii', 'stage iv', 'metastatic', 'advanced'];
-        const trialStages = stageKeywords.filter((s) => text.includes(s));
+        const trialStages = this.extractStageTokens(text);
 
-        if (trialStages.length === 0) {
+        if (trialStages.size === 0) {
             return this.makeResult({ note: 'No explicit cancer stage requirement detected.', scoreDelta: 0 });
         }
         if (!patientStage) {
             return this.makeResult({ missing: 'Patient cancer stage is not provided.', scoreDelta: -10 });
         }
-        const matches = trialStages.some(
-            (s) => patientStage.includes(s.replace('stage ', '')) || patientStage.includes(s)
-        );
+
+        // Patient stage strings arrive as e.g. "Stage IV", "IV", "4",
+        // "Metastatic" — prefix with "stage " so bare numerals parse too.
+        let patientTokens = this.extractStageTokens(patientStage);
+        if (patientTokens.size === 0) {
+            patientTokens = this.extractStageTokens(`stage ${patientStage}`);
+        }
+        if (patientTokens.size === 0) {
+            return this.makeResult({
+                note: `Patient cancer stage ("${patientStage}") could not be interpreted; stage compatibility not assessed.`,
+                scoreDelta: 0,
+            });
+        }
+
+        const trialStageList = [...trialStages].join(', ');
+        const matches = [...patientTokens].some((tok) => trialStages.has(tok));
         if (matches) {
             return this.makeResult({
-                met: `Patient cancer stage appears compatible with trial requirement (${trialStages.join(', ')}).`,
+                met: `Patient cancer stage appears compatible with trial requirement (${trialStageList}).`,
                 scoreDelta: 12,
             });
         }
         return this.makeResult({
-            failed: `Patient cancer stage (${patientStage}) does not clearly match trial stage requirement (${trialStages.join(', ')}).`,
+            failed: `Patient cancer stage (${patientStage}) does not clearly match trial stage requirement (${trialStageList}).`,
             scoreDelta: -15,
         });
     }

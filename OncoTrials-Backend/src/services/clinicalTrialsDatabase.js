@@ -1,26 +1,7 @@
 // src/services/clinicalTrialsDatabase.js
 const supabase = require("../db/supabaseClient");
 
-const BATCH_SIZE = Number(process.env.CTGOV_INSERT_BATCH_SIZE || 100);
-const MAX_RETRIES = Number(process.env.CTGOV_MAX_RETRIES || 3);
-const RETRY_BASE_MS = Number(process.env.CTGOV_RETRY_BASE_MS || 500);
 const IMPORTER_USER_ID = process.env.IMPORTER_USER_ID || null;
-
-function sleep(ms) {
-    return new Promise((r) => setTimeout(r, ms));
-}
-
-function chunkArray(arr, size) {
-    if (!Array.isArray(arr)) throw new TypeError("arr must be an array");
-    if (typeof size !== "number" || size <= 0)
-        throw new TypeError("size must be a positive number");
-
-    const chunks = [];
-    for (let i = 0; i < arr.length; i += size) {
-        chunks.push(arr.slice(i, i + size));
-    }
-    return chunks;
-}
 
 async function loadExistingTrials() {
     const { data: existingRows, error: existingErr } = await supabase
@@ -93,63 +74,6 @@ async function upsertRowsAndSetCreator(rows) {
     }
 }
 
-async function fallbackBatchInsertWithRetries(rows) {
-    if (!rows || rows.length === 0) return { insertedCount: 0 };
-    let totalInserted = 0;
-    const batches = chunkArray(rows, BATCH_SIZE);
-
-    for (const batch of batches) {
-        let attempt = 0;
-        let success = false;
-        
-        while (attempt < MAX_RETRIES && !success) {
-            attempt++;
-            try {
-                const batchWithCreator = batch.map((r) => ({
-                    ...r,
-                    created_by: IMPORTER_USER_ID || null,
-                }));
-                
-                const { data, error } = await supabase
-                    .from("trials")
-                    .insert(batchWithCreator)
-                    .select("nct_id"); // only fetch nct_id — full rows cause large egress
-
-                if (error) {
-                    if (error.code === '23505') {
-                        console.warn(`Unique constraint violation for batch, skipping:`, error.message);
-                        success = true;
-                        break;
-                    }
-                    
-                    if (attempt === MAX_RETRIES) {
-                        console.error(`Batch insert failed after ${MAX_RETRIES} attempts:`, error);
-                        break;
-                    }
-                    
-                    const backoff = RETRY_BASE_MS * Math.pow(2, attempt);
-                    console.warn(`Batch insert error attempt ${attempt}, retrying in ${backoff}ms`, error.message || error);
-                    await sleep(backoff);
-                } else {
-                    totalInserted += (data && data.length) || batch.length;
-                    success = true;
-                }
-            } catch (err) {
-                if (attempt === MAX_RETRIES) {
-                    console.error(`Batch insert exception after ${MAX_RETRIES} attempts:`, err);
-                    break;
-                }
-                
-                const backoff = RETRY_BASE_MS * Math.pow(2, attempt);
-                console.warn(`Batch insert exception attempt ${attempt}, retrying in ${backoff}ms`, err);
-                await sleep(backoff);
-            }
-        }
-    }
-
-    return { insertedCount: totalInserted };
-}
-
 async function updateExistingTrial(nct_id, updatePayload) {
     try {
         const { error: updateError } = await supabase
@@ -169,10 +93,16 @@ async function updateExistingTrial(nct_id, updatePayload) {
 }
 
 async function logImportJob(jobData) {
+    // supabase-js reports failures via the returned `error`, not by throwing —
+    // the old version ignored it, which hid a schema mismatch for months
+    // (0 rows ever written, so incremental sync never engaged).
     try {
-        await supabase.from("trial_import_jobs").insert([jobData]);
+        const { error } = await supabase.from("trial_import_jobs").insert([jobData]);
+        if (error) {
+            console.error("trial_import_jobs insert FAILED (incremental sync depends on this row):", error.message);
+        }
     } catch (err) {
-        console.warn("Could not write job summary row:", err);
+        console.error("trial_import_jobs insert threw:", err);
     }
 }
 
@@ -180,7 +110,6 @@ module.exports = {
     loadExistingTrials,
     getLastSuccessfulImportDate,
     upsertRowsAndSetCreator,
-    fallbackBatchInsertWithRetries,
     updateExistingTrial,
     logImportJob
 };

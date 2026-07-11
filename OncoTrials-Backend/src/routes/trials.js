@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../db/supabaseClient');
 const { redis } = require('../db/redisClient');
+const { requireAuth } = require('../middleware/auth');
+const { findOrgForEmail } = require('../services/domainVerification');
 const {
     LIST_COLUMNS,
     ALL_CHUNK_KEY_PREFIX,
@@ -27,8 +29,10 @@ const setCached = (key, data) => redis.set(key, data, { ex: CACHE_TTL_SECONDS })
 //     never block on Supabase pagination — only the very first call after
 //     a fresh deploy will trigger a lazy warm.
 router.get('/', async (req, res) => {
-    // Cache the response in the browser for 5 minutes, and in the CDN for 24 hours
-    res.set('Cache-Control', 'public, max-age=300, s-maxage=86400');
+    // 5 minutes in both browser and CDN. The Redis cache-version scheme
+    // invalidates instantly on import, but a CDN can't see version bumps —
+    // a long s-maxage would pin stale data for up to a day after an import.
+    res.set('Cache-Control', 'public, max-age=300, s-maxage=300');
 
     const wantAll = String(req.query.limit || '').toLowerCase() === 'all';
     const version = await getCacheVersion();
@@ -117,12 +121,32 @@ async function streamChunks(res, cacheMeta) {
 
     for (let chunkIndex = 0; chunkIndex < cacheMeta.chunkCount; chunkIndex++) {
         // Each Redis key holds one batch (~500 trials) of the full list.
-        const chunkTrials = await redis.get(`${ALL_CHUNK_KEY_PREFIX}${chunkIndex}`);
+        let chunkTrials = await redis.get(`${ALL_CHUNK_KEY_PREFIX}${chunkIndex}`);
+
+        // A missing chunk means the cache was evicted or shrunk mid-stream.
+        // Silently emitting an empty batch would serve the client a truncated
+        // trial list; instead re-warm once and retry, and if the chunk still
+        // isn't there, tell the client the stream is incomplete so it can
+        // fall back to the non-streaming endpoint.
+        if (chunkTrials == null) {
+            console.warn(`[trials/stream] chunk ${chunkIndex} missing; re-warming cache`);
+            try {
+                await warmAllTrialsCache();
+                chunkTrials = await redis.get(`${ALL_CHUNK_KEY_PREFIX}${chunkIndex}`);
+            } catch (err) {
+                console.error('[trials/stream] re-warm failed:', err?.message || err);
+            }
+            if (chunkTrials == null) {
+                res.write(JSON.stringify({ chunk: chunkIndex, data: [], total: cacheMeta.totalCount, done: true, error: 'stream_incomplete' }) + '\n');
+                break;
+            }
+        }
+
         const isFinalChunk = chunkIndex === cacheMeta.chunkCount - 1;
 
         const ndjsonLine = JSON.stringify({
             chunk: chunkIndex,
-            data: chunkTrials || [],
+            data: chunkTrials,
             total: cacheMeta.totalCount,
             done: isFinalChunk,
         });
@@ -158,32 +182,76 @@ router.get('/:id', async (req, res) => {
         .eq('id', id)
         .single();
 
-    if (error) return res.status(404).json({ error: error.message });
+    if (error) {
+        // PGRST116 = no rows for .single(); anything else is a server-side
+        // failure and must not masquerade as "trial not found".
+        if (error.code === 'PGRST116') return res.status(404).json({ error: 'Trial not found' });
+        console.error(`[trials/:id] fetch failed for ${id}:`, error.message);
+        return res.status(500).json({ error: 'Failed to fetch trial' });
+    }
     await redis.set(cacheKey, data, { ex: DETAIL_CACHE_TTL_SECONDS });
     res.json(data);
 });
 
-// POST /trials - create a new trial
-router.post('/', async (req, res) => {
-    const user = req.user;
-    const { data: { supabaseUser } } = await supabase.auth.getUser()
-    console.log('req body:', req.body);
-    console.log('supabaseUser:', supabaseUser);
+// Roles allowed to create trials. Role comes from public.users (server-side
+// row, not the client-editable user_metadata).
+const TRIAL_WRITER_ROLES = ['practitioner', 'crc'];
 
-    const { metadata, eligibilityCriteria } = req.body;
+// POST /trials - create a new trial.
+//
+// Auth: Supabase JWT, role practitioner/crc only. The trial is stamped with
+// the org the creator belongs to — derived server-side from their email
+// domain against organizations.valid_domains — so clinical staff can only
+// ever write trials under their own organization.
+router.post('/', requireAuth, async (req, res) => {
+    if (req.user.source !== 'supabase_jwt') {
+        return res.status(403).json({ error: 'Trial creation requires a signed-in physician or CRC account' });
+    }
+
+    // Role + canonical email from our own users table.
+    const { data: userRow, error: userErr } = await supabase
+        .from('users')
+        .select('role, email')
+        .eq('id', req.user.id)
+        .single();
+    if (userErr || !userRow) {
+        console.error('[trials] user lookup failed:', userErr?.message);
+        return res.status(403).json({ error: 'Account not recognized' });
+    }
+    if (!TRIAL_WRITER_ROLES.includes(userRow.role)) {
+        return res.status(403).json({ error: 'Only physicians and CRCs can create trials' });
+    }
+
+    let org;
+    try {
+        org = await findOrgForEmail(userRow.email || req.user.email);
+    } catch (err) {
+        console.error('[trials] org resolution failed:', err?.message || err);
+        return res.status(500).json({ error: 'Could not verify organization membership' });
+    }
+    if (!org) {
+        return res.status(403).json({
+            error: 'Your account email domain is not associated with a verified organization. Contact support to register your organization.',
+        });
+    }
+
+    const { metadata, eligibilityCriteria } = req.body ?? {};
 
     if (!metadata || typeof metadata !== 'object') {
         return res.status(400).json({ error: 'Missing or invalid metadata object in request body' });
     }
 
-    if (!eligibilityCriteria || typeof eligibilityCriteria !== 'string') {
+    if (typeof eligibilityCriteria !== 'string') {
         return res.status(400).json({ error: 'Missing or invalid eligibilityCriteria in request body' });
     }
 
     const {
-        nct_id, title, summary, phase, condition, status, sponsor,
+        nct_id, title, summary, status, sponsor,
+        organization, study_description, conditions, sex, minimum_age, maximum_age,
         location_city, location_state, location_country,
-        latitude, longitude, biomarker_criteria, source = 'manual'
+        latitude, longitude, biomarker_criteria,
+        start_date, primary_completion_date, completion_date, closed_at,
+        source = 'manual'
     } = metadata;
 
     if (!title || typeof title !== 'string') {
@@ -191,10 +259,15 @@ router.post('/', async (req, res) => {
     }
 
     const trialData = {
-        nct_id, title, summary, phase, condition, status, sponsor,
+        nct_id, title, summary, status, sponsor,
+        organization, study_description, conditions, sex, minimum_age, maximum_age,
         eligibility_criteria: eligibilityCriteria,
         location_city, location_state, location_country,
-        latitude, longitude, biomarker_criteria, source,
+        latitude, longitude, biomarker_criteria,
+        start_date, primary_completion_date, completion_date, closed_at,
+        source,
+        created_by: req.user.id,
+        org_id: org.id,     // server-derived; callers cannot choose an org
     };
 
     try {

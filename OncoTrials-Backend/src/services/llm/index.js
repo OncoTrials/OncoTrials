@@ -43,13 +43,21 @@ function resolveProvider(providerName) {
  * Callers should *always* check `ok` and fall back to a rule-derived rationale
  * when false — see trialRanker for the pattern.
  */
+// Abort shows up under different names depending on who threw it: the OpenAI
+// SDK wraps signal aborts in APIUserAbortError; a raw fetch abort is
+// AbortError. Both mean "our timeout fired".
+function isAbortError(err) {
+    return err?.name === 'APIUserAbortError' || err?.name === 'AbortError';
+}
+
 async function explainOnePair(patient, trial, opts = {}) {
     const provider = resolveProvider(opts.providerName);
 
-    // Pre-flight cost check. We use a conservative estimate (~1000 input
-    // tokens, ~250 output tokens for our prompt shape).
+    // Reserve the estimated cost up front (~1000 input tokens, ~250 output
+    // tokens for our prompt shape). The reservation is settled to the actual
+    // cost after the call — or refunded entirely if the call fails.
     const estimate = provider.estimateCostUSD(1000, 250);
-    const verdict  = await costGuard.canSpend(opts.orgId, estimate, { orgCapUsd: opts.orgCapUsd });
+    const verdict  = await costGuard.reserveSpend(opts.orgId, estimate, { orgCapUsd: opts.orgCapUsd });
     if (!verdict.allowed) {
         return {
             ok:       false,
@@ -69,8 +77,7 @@ async function explainOnePair(patient, trial, opts = {}) {
             signal: controller.signal,
         });
 
-        // Record actual spend post-hoc
-        await costGuard.recordSpend(opts.orgId, result.cost_usd, { orgCapUsd: opts.orgCapUsd });
+        await costGuard.settleSpend(opts.orgId, estimate, result.cost_usd, { orgCapUsd: opts.orgCapUsd });
 
         return {
             ok:          true,
@@ -81,11 +88,18 @@ async function explainOnePair(patient, trial, opts = {}) {
             usage:       result.usage,
         };
     } catch (err) {
+        // Refund the reservation — a failed call spent (approximately) nothing.
+        try {
+            await costGuard.settleSpend(opts.orgId, estimate, 0, { orgCapUsd: opts.orgCapUsd });
+        } catch (settleErr) {
+            console.error('costGuard settle after failure failed:', settleErr?.message || settleErr);
+        }
+
         return {
             ok:       false,
             provider: provider.name,
             model:    provider.model,
-            reason:   err?.name === 'AbortError' ? 'timeout' : (err?.code || 'llm_call_failed'),
+            reason:   isAbortError(err) ? 'timeout' : (err?.code || 'llm_call_failed'),
             error:    err?.message,
             fallback_used: true,
         };

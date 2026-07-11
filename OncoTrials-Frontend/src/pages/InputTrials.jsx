@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import PhysicianNavbar from '../components/layout/PhysicianNavbar'
 import FormButton from '../components/buttons/FormButton'
 import supabase from '../utils/SupabaseClient'
+import { createTrial } from '../api/trialsApi'
 
 const EMPTY_FORM = {
     nct_id: '',
@@ -153,9 +154,15 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
         }
         setSubmitting(true)
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            const payload = {
-                ...form,
+            // Trial writes go through the backend, which checks the user's
+            // role and pins the trial to their organization. Direct table
+            // inserts are blocked by RLS.
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) throw new Error('You must be signed in to submit a trial.')
+
+            const { eligibility_criteria, ...rest } = form
+            const metadata = {
+                ...rest,
                 conditions: form.conditions
                 ? form.conditions.split(',').map(s => s.trim()).filter(Boolean)
                 : [],
@@ -166,10 +173,12 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
                 primary_completion_date: form.primary_completion_date || null,
                 completion_date: form.completion_date || null,
                 closed_at: form.closed_at || null,
-                created_by: user?.id ?? undefined,
             }
-            const { error } = await supabase.from('trials').insert(payload)
-            if (error) throw error
+            await createTrial({
+                metadata,
+                eligibilityCriteria: eligibility_criteria || '',
+                accessToken: session.access_token,
+            })
 
             showToast('success', 'Trial submitted successfully!')
             setForm(EMPTY_FORM)

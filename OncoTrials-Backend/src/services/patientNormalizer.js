@@ -109,32 +109,42 @@ function pickEcog(observations) {
     return null;
 }
 
+// Case-sensitive: gene symbols are uppercase in clinical text, and lowercase
+// "met"/"kit"/"ret" are ordinary English words. A case-insensitive scan used
+// to tag patients with a MET mutation from narrative like "goal met".
+const GENE_RE = /\b(EGFR|HER2|KRAS|NRAS|BRAF|ALK|ROS1|MET|RET|NTRK[123]?|PIK3CA|PTEN|TP53|KIT|PDGFRA)\b/;
+
 function pickBiomarker(observations) {
-    // Look for known onco gene names in any genomic Observation's display text.
+    // Look for known onco gene names — but only in the fields that carry
+    // clinical coding, not the whole serialized resource. Scanning the full
+    // JSON matched gene names inside notes, interpretations, and units.
     // Conservative — we don't try to parse HGVS strings, that's a project on
     // its own. The matcher only needs a hint like "EGFR" or "HER2".
-    const GENE_RE = /\b(EGFR|HER2|KRAS|NRAS|BRAF|ALK|ROS1|MET|RET|NTRK[123]?|PIK3CA|PTEN|TP53|KIT|PDGFRA)\b/i;
     for (const o of observations || []) {
-        const text = JSON.stringify(o).match(GENE_RE);
-        if (text) return text[0].toUpperCase();
+        const candidates = [
+            o.code?.text,
+            ...(o.code?.coding || []).map((c) => c.display),
+            o.valueCodeableConcept?.text,
+            ...(o.valueCodeableConcept?.coding || []).map((c) => c.display),
+            o.valueString,
+        ];
+        for (const text of candidates) {
+            if (typeof text !== 'string') continue;
+            const m = text.match(GENE_RE);
+            if (m) return m[0].toUpperCase();
+        }
     }
     return null;
 }
 
-function pickLineOfTreatment(medicationRequests) {
-    // Counting prior systemic therapies from MedicationRequest is approximate.
-    // EPIC sometimes uses MedicationStatement for past therapies — that's a
-    // future enhancement. For now: count distinct medication codes ordered
-    // with intent=order|plan that have been completed.
-    const distinct = new Set();
-    for (const mr of medicationRequests || []) {
-        if (!['order', 'plan'].includes(mr.intent)) continue;
-        if (!['completed', 'stopped', 'active'].includes(mr.status)) continue;
-        const code = mr.medicationCodeableConcept?.coding?.[0]?.code
-                  || mr.medicationCodeableConcept?.text;
-        if (code) distinct.add(String(code));
-    }
-    return distinct.size;
+// Lines of therapy CANNOT be derived credibly from MedicationRequest counts:
+// every distinct completed/active medication (antiemetics, analgesics, ...)
+// counted as a "line", making lightly-treated patients look heavily
+// pre-treated — and a wrong value triggers hard disqualification in the
+// matcher, while a missing one only degrades gracefully. Until we can compute
+// this from proper regimen data (MedicationStatement/CarePlan), report null.
+function pickLineOfTreatment() {
+    return null;
 }
 
 function pickGender(patient) {

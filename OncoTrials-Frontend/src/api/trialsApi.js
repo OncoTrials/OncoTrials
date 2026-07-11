@@ -72,6 +72,26 @@ export async function streamAllTrials(onChunk, signal) {
     if (leftoverText.trim()) emitLine(leftoverText);
 }
 
+// Creates a trial through the backend, which enforces role (physician/CRC)
+// and stamps the creator's organization server-side. Direct Supabase inserts
+// into `trials` are blocked by RLS.
+//   metadata            — trial columns (title required)
+//   eligibilityCriteria — free-text criteria string (may be empty)
+//   accessToken         — Supabase session access token
+export async function createTrial({ metadata, eligibilityCriteria = '', accessToken }) {
+    const res = await fetch(`${API_BASE}/trials`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ metadata, eligibilityCriteria }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Failed to create trial: ${res.status}`);
+    return body;
+}
+
 // Fetches a single trial's full detail (all columns) by its UUID.
 export async function getTrialById(id) {
     const res = await fetch(`${API_BASE}/trials/${id}`);

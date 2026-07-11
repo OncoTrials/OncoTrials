@@ -11,8 +11,6 @@ const {
     loadExistingTrials,
     getLastSuccessfulImportDate,
     upsertRowsAndSetCreator,
-    fallbackBatchInsertWithRetries,
-    updateExistingTrial,
     logImportJob,
 } = require('./clinicalTrialsDatabase');
 
@@ -34,19 +32,23 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
     let pagesFetched = 0;
     let totalInserted = 0;
     let totalUpdated = 0;
+    let totalFailed = 0;
     let totalSkippedCountry = 0;
     let totalSkippedClosed = 0;
     let totalUnchanged = 0;
 
     do {
-        const { studies, nextPageToken } = await fetchStudiesPage({ 
-            query, 
+        const { studies, nextPageToken } = await fetchStudiesPage({
+            query,
             pageToken,
-            lastUpdatePostDate 
+            lastUpdatePostDate
         });
         pageToken = nextPageToken;
 
-        const batchToUpsert = [];
+        // Rows queued for this page, tagged so successes can be counted as
+        // insert vs update AFTER the write lands (counting up front reported
+        // phantom inserts whenever a batch failed).
+        const batchEntries = [];   // { row, isNew }
 
         for (const study of studies) {
             // Country guard
@@ -69,8 +71,7 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
                 const { hasChange } = buildUpdatePayload(row, existing);
 
                 if (hasChange) {
-                    batchToUpsert.push(row);
-                    totalUpdated++;
+                    batchEntries.push({ row, isNew: false });
                 } else {
                     // Skip DB write entirely — nothing to update
                     totalUnchanged++;
@@ -81,26 +82,35 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
                     totalSkippedClosed++;
                     continue;
                 }
-                batchToUpsert.push(row);
-                totalInserted++;
+                batchEntries.push({ row, isNew: true });
             }
         }
 
         // Upsert only new/changed trials
-        if (batchToUpsert.length > 0) {
-            const upsertResult = await upsertRowsAndSetCreator(batchToUpsert);
+        if (batchEntries.length > 0) {
+            const rows = batchEntries.map((e) => e.row);
+            const upsertResult = await upsertRowsAndSetCreator(rows);
+
             if (upsertResult.error) {
                 console.warn(
-                    "Batch upsert failed; falling back to individual updates (slow):",
+                    "Batch upsert failed; falling back to individual upserts (slow):",
                     upsertResult.error
                 );
-                for (const row of batchToUpsert) {
-                    await upsertRowsAndSetCreator([row]);
+                for (const entry of batchEntries) {
+                    const single = await upsertRowsAndSetCreator([entry.row]);
+                    if (single.error) {
+                        totalFailed++;
+                        console.error(`Upsert failed for ${entry.row.nct_id}:`, single.error.message || single.error);
+                    } else {
+                        entry.isNew ? totalInserted++ : totalUpdated++;
+                        existingByNct.set(entry.row.nct_id, entry.row);
+                    }
                 }
-            }
-
-            for (const r of batchToUpsert) {
-                if (r.nct_id) existingByNct.set(r.nct_id, r);
+            } else {
+                for (const entry of batchEntries) {
+                    entry.isNew ? totalInserted++ : totalUpdated++;
+                    existingByNct.set(entry.row.nct_id, entry.row);
+                }
             }
         }
 
@@ -120,12 +130,16 @@ async function fetchAndSyncStudies({ query = "", maxPages = 0 } = {}) {
         total_skipped_country: totalSkippedCountry,
         total_skipped_closed: totalSkippedClosed,
         duration_seconds: durationSeconds,
+        // A run with row-level failures is not a clean baseline for the next
+        // incremental sync — record it so getLastSuccessfulImportDate skips it.
+        error_text: totalFailed > 0 ? `${totalFailed} row(s) failed to upsert` : null,
     });
 
     return {
         pagesFetched,
         totalInserted,
         totalUpdated,
+        totalFailed,
         totalUnchanged,
         totalSkippedCountry,
         totalSkippedClosed,

@@ -5,13 +5,19 @@ const {
     buildAllowedCountrySet,
 } = require('../config/trialImportConfig');
 
-// Gene list for naive biomarker extraction
+// Gene list for naive biomarker extraction.
+//
+// Matching is CASE-SENSITIVE on purpose: gene symbols are written uppercase in
+// clinical text, and several of them are ordinary English words in lowercase.
+// The old case-insensitive regex tagged ~830 trials with a "MET" biomarker
+// from sentences like "criteria are met" (plus "kit", "ret"). Keep in sync
+// with migrations/005_biomarker_cleanup.sql, which recomputed stored rows.
 const GENE_SYMBOLS = [
     "KRAS", "NRAS", "HRAS", "EGFR", "HER2", "ERBB2",
     "NTRK1", "NTRK2", "NTRK3", "BRAF", "ALK", "ROS1",
     "PIK3CA", "PTEN", "TP53", "MET", "RET", "KIT", "PDGFRA",
 ];
-const GENE_REGEX = new RegExp(`\\b(${GENE_SYMBOLS.join("|")})\\b`, "gi");
+const GENE_REGEX = new RegExp(`\\b(${GENE_SYMBOLS.join("|")})\\b`, "g");
 
 // Date helpers
 
@@ -205,4 +211,6 @@ module.exports = {
     filterAllowedLocations,
     buildUpdatePayload,
     CLOSED_STATUSES,
+    // exported for tests
+    _extractBiomarkersFromText: extractBiomarkersFromText,
 };
