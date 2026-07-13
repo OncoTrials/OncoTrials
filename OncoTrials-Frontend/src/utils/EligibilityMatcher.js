@@ -9,7 +9,9 @@ class EligibilityMatcher {
   };
 
   static evaluatePatientAgainstTrial(patient, trial) {
+    
     const clinicianJson = trial?.eligibility_summary_clinician_json || {};
+    console.log(clinicianJson);
 
     const inclusionCriteria = Array.isArray(clinicianJson.inclusion_criteria)
       ? clinicianJson.inclusion_criteria
@@ -18,6 +20,8 @@ class EligibilityMatcher {
     const exclusionCriteria = Array.isArray(clinicianJson.exclusion_criteria)
       ? clinicianJson.exclusion_criteria
       : [];
+      console.log("Inclusion Criteria:", trial);
+      console.log("Exclusion Criteria:", exclusionCriteria);
 
     const reasons = {
       met_inclusion: [],

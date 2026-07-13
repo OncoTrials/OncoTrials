@@ -138,19 +138,20 @@ export default function EditTrial({
 }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const [form, setForm] = useState(emptyForm);
-    const [initialForm, setInitialForm] = useState(emptyForm);
+    const [form, setForm] = useState(trial ? trialToForm(trial) : emptyForm);
+    const [initialForm, setInitialForm] = useState(trial ? trialToForm(trial) : emptyForm);
     const titleInputRef = useRef(null);
+    console.log(trial)
 
     // Reset form (and dirty-check baseline, and any stale error) whenever a
     // new trial is loaded into the modal.
     useEffect(() => {
-        if (!trial) return;
+        if (!isOpen ||!trial) return;
         const next = trialToForm(trial);
         setForm(next);
         setInitialForm(next);
         setError(null);
-    }, [trial]);
+    }, [isOpen,trial]);
 
     // Autofocus the title field when the modal opens.
     useEffect(() => {

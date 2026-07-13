@@ -50,7 +50,7 @@ const LIST_COLUMNS = [
     'summary', 'conditions', 'sex', 'minimum_age', 'maximum_age',
     'location_city', 'location_state', 'location_country', 'organization',
     'latitude', 'longitude', 'start_date', 'primary_completion_date',
-    'completion_date', 'eligibility_criteria_summary', 'biomarker_criteria', 'created_at',
+    'completion_date', 'eligibility_criteria_summary', 'eligibility_summary_clinician_json', 'biomarker_criteria', 'created_at',
 ].join(', ');
 
 // ------------------------------------------------------------------ paging
