@@ -1,4 +1,4 @@
-// utils/EligibilityMatcher.js
+import { convertStatus } from "./TrialCardUtils";
 
 class EligibilityMatcher {
   static STATUS = {
@@ -8,10 +8,29 @@ class EligibilityMatcher {
     NOT_ELIGIBLE: "not_eligible",
   };
 
+  static AGE_RANGE_RE = /age range:\s*(\d+)\s*[-–]\s*(\d+)/i;
+  static AGED_RANGE_RE = /aged?\s*(\d+)\s*[-–]\s*(\d+)\s*years?/i;
+  static ECOG_ZERO_TO_N_RE = /ecog.*?0\s*[-–]\s*(\d+)/i;
+  static ECOG_LTE_RE = /ecog.*?(?:<=|≤)\s*(\d+)/i;
+  static PRIOR_LINES_ATLEAST_RE = /(?:≥|>=|at least)\s*(\d+)\s*prior lines of therapy/i;
+  static PRIOR_LINES_N_PLUS_RE = /(\d+)\+?\s*prior lines of therapy/i;
+  static BIOMARKER_KEYWORDS_RE = /(egfr|kras|alk|braf|ros1|her2|cd79b|biomarker|mutation)/i;
+
+  // Word-boundary patterns instead of substring matching: previously
+  // text.includes("stage i") also matched "stage ii"/"stage iii"/"stage iv",
+  // and patientStage.includes("i") let a stage IV patient match a stage I
+  // requirement. Roman-numeral lookaheads prevent prefix collisions.
+  static STAGE_PATTERNS = [
+    { label: "stage i", re: /\bstage\s+i\b(?![iv])/ },
+    { label: "stage ii", re: /\bstage\s+ii\b(?!i)/ },
+    { label: "stage iii", re: /\bstage\s+iii\b/ },
+    { label: "stage iv", re: /\bstage\s+iv\b/ },
+    { label: "metastatic", re: /\bmetastatic\b/ },
+    { label: "advanced", re: /\badvanced\b/ },
+  ];
+
   static evaluatePatientAgainstTrial(patient, trial) {
-    
     const clinicianJson = trial?.eligibility_summary_clinician_json || {};
-    console.log(clinicianJson);
 
     const inclusionCriteria = Array.isArray(clinicianJson.inclusion_criteria)
       ? clinicianJson.inclusion_criteria
@@ -20,8 +39,9 @@ class EligibilityMatcher {
     const exclusionCriteria = Array.isArray(clinicianJson.exclusion_criteria)
       ? clinicianJson.exclusion_criteria
       : [];
-      console.log("Inclusion Criteria:", trial);
-      console.log("Exclusion Criteria:", exclusionCriteria);
+
+
+    const inclusionText = inclusionCriteria.join(" ").toLowerCase();
 
     const reasons = {
       met_inclusion: [],
@@ -34,13 +54,14 @@ class EligibilityMatcher {
     let score = 50;
     let hardFailure = false;
 
-    // -------------------------
-    // Trial-level structured checks
-    // -------------------------
 
-    // Recruiting / status. Normalize to handle both ClinicalTrials.gov v2
-    // SCREAMING_SNAKE_CASE ("NOT_YET_RECRUITING") and legacy hyphen/space-
-    // cased values ("Not yet recruiting") with one rule.
+    if (exclusionCriteria.length > 0) {
+      reasons.notes.push(
+        `${exclusionCriteria.length} exclusion criteria were not automatically evaluated and require manual review.`
+      );
+    }
+
+
     if (trial?.status) {
       const openStatuses = [
         "recruiting",
@@ -50,106 +71,74 @@ class EligibilityMatcher {
       const normalized = String(trial.status).toLowerCase().replace(/[_\s]+/g, "-");
 
       if (openStatuses.includes(normalized)) {
-        reasons.met_inclusion.push(`Trial is currently ${trial.status}.`);
+        reasons.met_inclusion.push(`Trial is currently ${convertStatus(trial.status)}.`);
         score += 5;
       } else {
-        reasons.failed_inclusion.push(`Trial status is ${trial.status}.`);
+        reasons.failed_inclusion.push(`Trial status is ${convertStatus(trial.status)}.`);
         score -= 15;
       }
     }
 
-    // Sex / gender
     const sexCheck = this.checkSex(patient, trial);
     this.applyCheckResult(sexCheck, reasons);
     score += sexCheck.scoreDelta;
     if (sexCheck.hardFailure) hardFailure = true;
 
-    // Age
-    const ageCheck = this.checkAge(patient, trial, inclusionCriteria);
+    const ageCheck = this.checkAge(patient, trial, inclusionText);
     this.applyCheckResult(ageCheck, reasons);
     score += ageCheck.scoreDelta;
     if (ageCheck.hardFailure) hardFailure = true;
 
-    // Cancer type / diagnosis
-    const diagnosisCheck = this.checkDiagnosis(
-      patient,
-      trial,
-      inclusionCriteria
-    );
+    const diagnosisCheck = this.checkDiagnosis(patient, trial, inclusionText);
     this.applyCheckResult(diagnosisCheck, reasons);
     score += diagnosisCheck.scoreDelta;
     if (diagnosisCheck.hardFailure) hardFailure = true;
 
-    // Cancer stage
-    const stageCheck = this.checkCancerStage(patient, trial, inclusionCriteria);
+    const stageCheck = this.checkCancerStage(patient, trial, inclusionText);
     this.applyCheckResult(stageCheck, reasons);
     score += stageCheck.scoreDelta;
 
-    // Biomarker
-    const biomarkerCheck = this.checkBiomarker(
-      patient,
-      trial,
-      inclusionCriteria
-    );
+    const biomarkerCheck = this.checkBiomarker(patient, trial, inclusionText);
     this.applyCheckResult(biomarkerCheck, reasons);
     score += biomarkerCheck.scoreDelta;
 
-    // ECOG
-    const ecogCheck = this.checkECOG(patient, inclusionCriteria);
+    const ecogCheck = this.checkECOG(patient, inclusionText);
     this.applyCheckResult(ecogCheck, reasons);
     score += ecogCheck.scoreDelta;
     if (ecogCheck.hardFailure) hardFailure = true;
 
-    // Prior lines of therapy
-    const priorLinesCheck = this.checkPriorLinesOfTherapy(
-      patient,
-      inclusionCriteria
-    );
+    const priorLinesCheck = this.checkPriorLinesOfTherapy(patient, inclusionText);
     this.applyCheckResult(priorLinesCheck, reasons);
     score += priorLinesCheck.scoreDelta;
     if (priorLinesCheck.hardFailure) hardFailure = true;
 
     score = Math.max(0, Math.min(100, score));
 
-    const status = this.determineStatus({
-      score,
-      hardFailure,
-      reasons,
-    });
+    const status = this.determineStatus({ score, hardFailure, reasons });
 
-    return {
-      status,
-      score,
-      reasons,
-    };
+    return { status, score, reasons };
   }
 
   static determineStatus({ score, hardFailure, reasons }) {
     if (hardFailure || reasons.triggered_exclusion.length > 0) {
       return this.STATUS.NOT_ELIGIBLE;
     }
-
     if (reasons.failed_inclusion.length >= 2) {
       return this.STATUS.NOT_ELIGIBLE;
     }
 
-    const hasMissingCriticalInfo =
-      reasons.missing_information.length > 0 || reasons.notes.length > 0;
-
+    const hasMissingCriticalInfo = reasons.missing_information.length > 0;
     if (score >= 85 && !hasMissingCriticalInfo) {
       return this.STATUS.LIKELY_ELIGIBLE;
     }
-
     if (score >= 70 && reasons.failed_inclusion.length === 0) {
       return this.STATUS.ELIGIBLE;
     }
-
     return this.STATUS.NEEDS_REVIEW;
   }
 
   static applyCheckResult(result, reasons) {
     if (!result) return;
-
     if (result.met) reasons.met_inclusion.push(result.met);
     if (result.failed) reasons.failed_inclusion.push(result.failed);
     if (result.exclusion) reasons.triggered_exclusion.push(result.exclusion);
@@ -166,46 +155,28 @@ class EligibilityMatcher {
     scoreDelta = 0,
     hardFailure = false,
   }) {
-    return {
-      met,
-      failed,
-      exclusion,
-      missing,
-      note,
-      scoreDelta,
-      hardFailure,
-    };
+    return { met, failed, exclusion, missing, note, scoreDelta, hardFailure };
   }
-
-  // -------------------------
-  // Individual checks
-  // -------------------------
 
   static checkSex(patient, trial) {
     const patientGender = patient?.gender?.toLowerCase()?.trim();
     const trialSex = trial?.sex?.toLowerCase()?.trim();
 
     if (!trialSex || trialSex === "all") {
-      return this.makeResult({
-        note: "Trial does not restrict sex.",
-        scoreDelta: 2,
-      });
+      return this.makeResult({ note: "Trial does not restrict sex.", scoreDelta: 2 });
     }
-
-    if (!patientGender) {
+    if (!patientGender || patientGender === "all") {
       return this.makeResult({
-        missing: "Patient gender is not provided.",
+        missing: `Trial restricts sex to ${trial.sex}, but patient gender was not provided.`,
         scoreDelta: -5,
       });
     }
-
     if (patientGender === trialSex) {
       return this.makeResult({
         met: `Patient gender matches trial requirement (${trial.sex}).`,
         scoreDelta: 10,
       });
     }
-
     return this.makeResult({
       failed: `Patient gender does not match trial requirement (${trial.sex}).`,
       scoreDelta: -25,
@@ -213,18 +184,20 @@ class EligibilityMatcher {
     });
   }
 
-  static checkAge(patient, trial, inclusionCriteria) {
+  static checkAge(patient, trial, inclusionText) {
     const patientAge = Number(patient?.age);
 
     if (!Number.isFinite(patientAge)) {
-      return this.makeResult({
-        missing: "Patient age is not provided.",
-        scoreDelta: -10,
-      });
+      return this.makeResult({ missing: "Patient age is not provided.", scoreDelta: -10 });
     }
 
     const minAge = this.extractMinimumAge(trial);
-    const maxAge = this.extractMaximumAge(inclusionCriteria);
+    const maxAgeFromColumn = trial?.maximum_age != null
+      ? this.convertAgeToYears(String(trial.maximum_age))
+      : null;
+    const maxAge = Number.isFinite(maxAgeFromColumn)
+      ? maxAgeFromColumn
+      : this.extractMaximumAge(inclusionText);
 
     if (minAge != null && patientAge < minAge) {
       return this.makeResult({
@@ -233,7 +206,6 @@ class EligibilityMatcher {
         hardFailure: true,
       });
     }
-
     if (maxAge != null && patientAge > maxAge) {
       return this.makeResult({
         failed: `Patient age ${patientAge} is above maximum age requirement of ${maxAge}.`,
@@ -241,28 +213,25 @@ class EligibilityMatcher {
         hardFailure: true,
       });
     }
-
     if (minAge != null && maxAge != null) {
       return this.makeResult({
         met: `Patient age ${patientAge} is within required range (${minAge}-${maxAge}).`,
         scoreDelta: 15,
       });
     }
-
     if (minAge != null) {
       return this.makeResult({
         met: `Patient age ${patientAge} meets minimum age requirement of ${minAge}.`,
         scoreDelta: 12,
       });
     }
-
     return this.makeResult({
       note: `Patient age ${patientAge} provided, but no structured age limit was found.`,
       scoreDelta: 2,
     });
   }
 
-  static checkDiagnosis(patient, trial, inclusionCriteria) {
+  static checkDiagnosis(patient, trial, inclusionText) {
     const patientDiagnosis = patient?.cancerType?.toLowerCase()?.trim();
 
     if (!patientDiagnosis) {
@@ -276,14 +245,10 @@ class EligibilityMatcher {
       ? trial.conditions.map((c) => String(c).toLowerCase())
       : [];
 
-    const inclusionText = inclusionCriteria.join(" ").toLowerCase();
-
     const matchesTrialConditions = trialConditions.some(
       (condition) =>
-        condition.includes(patientDiagnosis) ||
-        patientDiagnosis.includes(condition)
+        condition.includes(patientDiagnosis) || patientDiagnosis.includes(condition)
     );
-
     const matchesInclusionText = inclusionText.includes(patientDiagnosis);
 
     if (matchesTrialConditions || matchesInclusionText) {
@@ -292,7 +257,6 @@ class EligibilityMatcher {
         scoreDelta: 18,
       });
     }
-
     return this.makeResult({
       failed: `Patient diagnosis does not clearly match the trial disease requirement.`,
       scoreDelta: -20,
@@ -300,59 +264,40 @@ class EligibilityMatcher {
     });
   }
 
-  static checkBiomarker(patient, trial, inclusionCriteria) {
+  static checkBiomarker(patient, trial, inclusionText) {
     const patientBiomarker = patient?.mutationBiomarker?.toLowerCase()?.trim();
+    const trialBiomarkerText = `${trial?.biomarker_criteria || ""} ${inclusionText}`.toLowerCase();
 
-    const trialBiomarkerText = [
-      trial?.biomarker_criteria || "",
-      ...inclusionCriteria,
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const likelyHasBiomarkerRequirement =
-      /(egfr|kras|alk|braf|ros1|her2|cd79b|biomarker|mutation)/i.test(
-        trialBiomarkerText
-      );
+    const likelyHasBiomarkerRequirement = this.BIOMARKER_KEYWORDS_RE.test(trialBiomarkerText);
 
     if (!likelyHasBiomarkerRequirement) {
-      return this.makeResult({
-        note: "No clear biomarker requirement was detected.",
-        scoreDelta: 1,
-      });
+      return this.makeResult({ note: "No clear biomarker requirement was detected.", scoreDelta: 1 });
     }
-
     if (!patientBiomarker) {
       return this.makeResult({
         missing: "Patient biomarker information is not provided.",
         scoreDelta: -8,
       });
     }
-
     if (trialBiomarkerText.includes(patientBiomarker)) {
       return this.makeResult({
         met: `Patient biomarker appears to match trial biomarker criteria.`,
         scoreDelta: 12,
       });
     }
-
     return this.makeResult({
       failed: `Patient biomarker does not clearly match the trial biomarker criteria.`,
       scoreDelta: -10,
     });
   }
 
-  static checkECOG(patient, inclusionCriteria) {
+  static checkECOG(patient, inclusionText) {
     const patientEcog = patient?.ecog;
-    const ecogRule = this.extractMaxECOG(inclusionCriteria);
+    const ecogRule = this.extractMaxECOG(inclusionText);
 
     if (ecogRule == null) {
-      return this.makeResult({
-        note: "No structured ECOG requirement detected.",
-        scoreDelta: 0,
-      });
+      return this.makeResult({ note: "No structured ECOG requirement detected.", scoreDelta: 0 });
     }
-
     if (patientEcog == null || patientEcog === "") {
       return this.makeResult({
         missing: `ECOG performance status is required by the trial (max ${ecogRule}) but not provided.`,
@@ -361,21 +306,18 @@ class EligibilityMatcher {
     }
 
     const numericEcog = Number(patientEcog);
-
     if (!Number.isFinite(numericEcog)) {
       return this.makeResult({
         missing: "Patient ECOG performance status is invalid or missing.",
         scoreDelta: -12,
       });
     }
-
     if (numericEcog <= ecogRule) {
       return this.makeResult({
         met: `Patient ECOG ${numericEcog} meets requirement (<= ${ecogRule}).`,
         scoreDelta: 15,
       });
     }
-
     return this.makeResult({
       failed: `Patient ECOG ${numericEcog} exceeds allowed maximum of ${ecogRule}.`,
       scoreDelta: -25,
@@ -383,8 +325,8 @@ class EligibilityMatcher {
     });
   }
 
-  static checkPriorLinesOfTherapy(patient, inclusionCriteria) {
-    const requiredMin = this.extractMinPriorLines(inclusionCriteria);
+  static checkPriorLinesOfTherapy(patient, inclusionText) {
+    const requiredMin = this.extractMinPriorLines(inclusionText);
 
     if (requiredMin == null) {
       return this.makeResult({
@@ -394,21 +336,18 @@ class EligibilityMatcher {
     }
 
     const patientLines = Number(patient?.lineOfTreatment);
-
     if (!Number.isFinite(patientLines)) {
       return this.makeResult({
         missing: `Trial requires at least ${requiredMin} prior lines of therapy, but patient value is not provided.`,
         scoreDelta: -12,
       });
     }
-
     if (patientLines >= requiredMin) {
       return this.makeResult({
         met: `Patient has ${patientLines} prior lines of therapy and meets minimum requirement of ${requiredMin}.`,
         scoreDelta: 14,
       });
     }
-
     return this.makeResult({
       failed: `Patient has ${patientLines} prior lines of therapy, below required minimum of ${requiredMin}.`,
       scoreDelta: -20,
@@ -416,116 +355,76 @@ class EligibilityMatcher {
     });
   }
 
-  static checkCancerStage(patient, trial, inclusionCriteria) {
+  static checkCancerStage(patient, trial, inclusionText) {
     const patientStage = patient?.cancerStage?.toLowerCase()?.trim();
+    const text = `${inclusionText} ${trial?.study_description || ""}`.toLowerCase();
 
-    const text = [
-      ...(Array.isArray(inclusionCriteria) ? inclusionCriteria : []),
-      trial?.study_description || "",
-    ]
-      .join(" ")
-      .toLowerCase();
+    const trialStages = this.STAGE_PATTERNS.filter(({ re }) => re.test(text));
 
-    const stageKeywords = [
-      "stage i",
-      "stage ii",
-      "stage iii",
-      "stage iv",
-      "metastatic",
-      "advanced",
-    ];
-
-    const trialStages = stageKeywords.filter((stage) => text.includes(stage));
-
-    // No stage requirement found
     if (trialStages.length === 0) {
-      return this.makeResult({
-        note: "No explicit cancer stage requirement detected.",
-        scoreDelta: 0,
-      });
+      return this.makeResult({ note: "No explicit cancer stage requirement detected.", scoreDelta: 0 });
     }
-
     if (!patientStage) {
-      return this.makeResult({
-        missing: "Patient cancer stage is not provided.",
-        scoreDelta: -10,
-      });
+      return this.makeResult({ missing: "Patient cancer stage is not provided.", scoreDelta: -10 });
     }
 
-    const matches = trialStages.some(
-      (stage) =>
-        patientStage.includes(stage.replace("stage ", "")) ||
-        patientStage.includes(stage)
-    );
+    // Match the patient's stage against the same word-boundary patterns —
+    // form values are exactly "stage i".."stage iv"/"metastatic"/"advanced",
+    // so this is effectively an exact-label match without substring bleed.
+    const matches = trialStages.some(({ re }) => re.test(patientStage));
+
+    const stageLabels = trialStages.map((s) => s.label).join(", ");
 
     if (matches) {
       return this.makeResult({
-        met: `Patient cancer stage appears compatible with trial requirement (${trialStages.join(
-          ", "
-        )}).`,
+        met: `Patient cancer stage appears compatible with trial requirement (${stageLabels}).`,
         scoreDelta: 12,
       });
     }
-
     return this.makeResult({
-      failed: `Patient cancer stage (${patientStage}) does not clearly match trial stage requirement (${trialStages.join(
-        ", "
-      )}).`,
+      failed: `Patient cancer stage (${patientStage}) does not clearly match trial stage requirement (${stageLabels}).`,
       scoreDelta: -15,
     });
   }
 
-  // -------------------------
-  // Extraction helpers
-  // -------------------------
 
   static extractMinimumAge(trial) {
     const raw = trial?.minimum_age;
     if (!raw) return null;
-
     const value = this.convertAgeToYears(raw);
     return Number.isFinite(value) ? value : null;
   }
 
-  static extractMaximumAge(inclusionCriteria) {
-    const text = inclusionCriteria.join(" ");
-
-    // Example: "Age range: 25-49 years"
-    let match = text.match(/age range:\s*(\d+)\s*[-–]\s*(\d+)/i);
+  static extractMaximumAge(inclusionText) {
+    let match = inclusionText.match(this.AGE_RANGE_RE);
     if (match) return Number(match[2]);
 
-    // Example: "aged 25-49 years"
-    match = text.match(/aged?\s*(\d+)\s*[-–]\s*(\d+)\s*years?/i);
+    match = inclusionText.match(this.AGED_RANGE_RE);
     if (match) return Number(match[2]);
 
     return null;
   }
 
-  static extractMaxECOG(inclusionCriteria) {
-    const text = inclusionCriteria.join(" ");
-
-    let match = text.match(/ecog.*?0\s*[-–]\s*(\d+)/i);
+  static extractMaxECOG(inclusionText) {
+    let match = inclusionText.match(this.ECOG_ZERO_TO_N_RE);
     if (match) return Number(match[1]);
 
-    match = text.match(/ecog.*?(?:<=|≤)\s*(\d+)/i);
+    match = inclusionText.match(this.ECOG_LTE_RE);
+    if (match) return Number(match[1]);
+
+    return null;
+  }
+
+  static extractMinPriorLines(inclusionText) {
+    let match = inclusionText.match(this.PRIOR_LINES_ATLEAST_RE);
+    if (match) return Number(match[1]);
+
+    match = inclusionText.match(this.PRIOR_LINES_N_PLUS_RE);
     if (match) return Number(match[1]);
 
     return null;
   }
 
-  static extractMinPriorLines(inclusionCriteria) {
-    const text = inclusionCriteria.join(" ");
-
-    let match = text.match(
-      /(?:≥|>=|at least)\s*(\d+)\s*prior lines of therapy/i
-    );
-    if (match) return Number(match[1]);
-
-    match = text.match(/(\d+)\+?\s*prior lines of therapy/i);
-    if (match) return Number(match[1]);
-
-    return null;
-  }
   static convertAgeToYears(rawAge) {
     if (!rawAge || typeof rawAge !== "string") return null;
 
