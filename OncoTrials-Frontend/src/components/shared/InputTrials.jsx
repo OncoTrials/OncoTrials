@@ -208,7 +208,7 @@ Use empty string "" for any field not found. Dates should be in YYYY-MM-DD forma
 
                 {/* Mode toggle */}
                 <div className="flex gap-2 mb-8 p-1 bg-gray-100 rounded-xl w-fit border border-gray-200">
-                    {['manual', 'document'].map(m => (
+                    {['manual'].map(m => (
                         <button
                             key={m}
                             onClick={() => setMode(m)}
