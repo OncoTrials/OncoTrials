@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/react'
 import FormButton from '../../components/buttons/FormButton'
-import { InfoIcon } from '@phosphor-icons/react'
+import { InfoIcon, CaretUpDownIcon } from '@phosphor-icons/react'
 import EligibilityMatcher from '../../utils/EligibilityMatcher'
+import { CANCER_TYPES } from '../../data/cancerTypes'
 
 // Normalize strings for comparison: lowercase, strip hyphens/underscores/spaces
 const normalize = (str) =>
@@ -13,6 +15,7 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
     const [trialStatus, setTrialStatus] = useState('')
     const [cancerStage, setCancerStage] = useState('')
     const [cancerType, setCancerType] = useState('')
+    const [cancerTypeQuery, setCancerTypeQuery] = useState('')
     const [mutationBiomarker, setMutationBiomarker] = useState('');
     const [ecogScore, setEcogScore] = useState('');
     const [lineOfTreatment, setLineOfTreatment] = useState('');
@@ -127,10 +130,24 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
         setMutationBiomarker('')
         setEcogScore('')
         setLineOfTreatment('')
+        setCancerTypeQuery('')
         setErrors({})
         setResultCount(null)
         onFilter(null)
     }
+
+    // Filtered + grouped cancer type options for the combobox
+    const filteredCancerTypes = cancerTypeQuery.trim()
+        ? CANCER_TYPES.filter(({ name }) =>
+            name.toLowerCase().includes(cancerTypeQuery.trim().toLowerCase())
+        )
+        : CANCER_TYPES
+
+    const groupedCancerTypes = filteredCancerTypes.reduce((groups, entry) => {
+        if (!groups[entry.category]) groups[entry.category] = []
+        groups[entry.category].push(entry)
+        return groups
+    }, {})
 
     // Shared input class
     const inputCls =
@@ -242,14 +259,51 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
                 <label className={labelCls} htmlFor="cancer-type-input">
                     Cancer Type<span className="text-red-500">*</span>
                 </label>
-                <input
-                    className={`${inputCls} ${errors.cancerType ? 'border-red-400' : 'border-gray-300'}`}
-                    placeholder="e.g. Lung, Breast, Colorectal"
-                    type="text"
+                <Combobox
                     value={cancerType}
-                    onChange={(e) => { setCancerType(e.target.value); setErrors(p => ({ ...p, cancerType: undefined })) }}
-                    id="cancer-type-input"
-                />
+                    onChange={(value) => {
+                        setCancerType(value ?? '')
+                        setCancerTypeQuery('')
+                        setErrors(p => ({ ...p, cancerType: undefined }))
+                    }}
+                >
+                    <div className="relative">
+                        <ComboboxInput
+                            id="cancer-type-input"
+                            className={`${inputCls} pr-10 ${errors.cancerType ? 'border-red-400' : 'border-gray-300'}`}
+                            displayValue={(value) => value ?? ''}
+                            onChange={(e) => setCancerTypeQuery(e.target.value)}
+                            placeholder="Search cancer type (e.g. Lung, Breast, Colorectal)"
+                        />
+                        <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3">
+                            <CaretUpDownIcon size={16} className="text-gray-500" />
+                        </ComboboxButton>
+                        <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                            {Object.keys(groupedCancerTypes).length === 0 ? (
+                                <div className="px-3 py-2 text-gray-500">No matches</div>
+                            ) : (
+                                Object.entries(groupedCancerTypes).map(([category, entries]) => (
+                                    <div key={category}>
+                                        <div className="px-3 pt-2 pb-1 text-xs font-semibold uppercase text-gray-400">
+                                            {category}
+                                        </div>
+                                        {entries.map((entry) => (
+                                            <ComboboxOption
+                                                key={entry.name}
+                                                value={entry.name}
+                                                className={({ active }) =>
+                                                    `cursor-pointer select-none px-3 py-2 ${active ? 'bg-blue-100' : ''}`
+                                                }
+                                            >
+                                                {entry.name}
+                                            </ComboboxOption>
+                                        ))}
+                                    </div>
+                                ))
+                            )}
+                        </ComboboxOptions>
+                    </div>
+                </Combobox>
                 {errors.cancerType && <p className={errorCls}>{errors.cancerType}</p>}
             </div>
 
