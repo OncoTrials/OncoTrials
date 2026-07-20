@@ -273,12 +273,12 @@ function SearchTrialsForm({ trials, onFilter, isLoading }) {
                             className={`${inputCls} pr-10 ${errors.cancerType ? 'border-red-400' : 'border-gray-300'}`}
                             displayValue={(value) => value ?? ''}
                             onChange={(e) => setCancerTypeQuery(e.target.value)}
-                            placeholder="Search cancer type (e.g. Lung, Breast, Colorectal)"
+                            placeholder="Search cancer type (e.g. Lung, Breast)"
                         />
                         <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3">
                             <CaretUpDownIcon size={16} className="text-gray-500" />
                         </ComboboxButton>
-                        <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                        <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto  overscroll-contain rounded-md bg-white py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                             {Object.keys(groupedCancerTypes).length === 0 ? (
                                 <div className="px-3 py-2 text-gray-500">No matches</div>
                             ) : (

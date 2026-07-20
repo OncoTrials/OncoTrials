@@ -5,31 +5,35 @@ export const CANCER_TYPES = [
     { category: 'Gastrointestinal (GI)', name: 'Rectal cancer' },
     { category: 'Gastrointestinal (GI)', name: 'Anal cancer' },
     { category: 'Gastrointestinal (GI)', name: 'Esophageal cancer' },
-    { category: 'Gastrointestinal (GI)', name: 'Gastroesophageal junction (GEJ) cancer' },
+    { category: 'Gastrointestinal (GI)', name: 'Gastroesophageal junction cancer' },
     { category: 'Gastrointestinal (GI)', name: 'Gastric (stomach) cancer' },
     { category: 'Gastrointestinal (GI)', name: 'Pancreatic cancer' },
-    { category: 'Gastrointestinal (GI)', name: 'Hepatocellular carcinoma (HCC)' },
+    { category: 'Gastrointestinal (GI)', name: 'Hepatocellular carcinoma' },
     { category: 'Gastrointestinal (GI)', name: 'Cholangiocarcinoma' },
     { category: 'Gastrointestinal (GI)', name: 'Gallbladder cancer' },
     { category: 'Gastrointestinal (GI)', name: 'Small bowel adenocarcinoma' },
     { category: 'Gastrointestinal (GI)', name: 'Appendiceal cancer' },
-    { category: 'Gastrointestinal (GI)', name: 'Neuroendocrine tumors (GI)' },
+    { category: 'Gastrointestinal (GI)', name: 'Neuroendocrine tumors' },
+    { category: 'Gastrointestinal (GI)', name: 'Gastrointestinal stromal tumor' },
 
     // Breast
+    { category: 'Breast', name: 'Breast cancer' },
     { category: 'Breast', name: 'Hormone receptor positive breast cancer' },
     { category: 'Breast', name: 'HER2-positive breast cancer' },
     { category: 'Breast', name: 'Triple-negative breast cancer' },
     { category: 'Breast', name: 'Male breast cancer' },
 
     // Thoracic
-    { category: 'Thoracic', name: 'Non-small cell lung cancer (NSCLC)' },
-    { category: 'Thoracic', name: 'Small cell lung cancer (SCLC)' },
+    { category: 'Thoracic', name: 'Lung Cancer' },
+    { category: 'Thoracic', name: 'Non-small cell lung cancer' },
+    { category: 'Thoracic', name: 'Small cell lung cancer' },
     { category: 'Thoracic', name: 'Mesothelioma' },
     { category: 'Thoracic', name: 'Thymoma/thymic carcinoma' },
+    
 
     // Genitourinary (GU)
     { category: 'Genitourinary (GU)', name: 'Prostate cancer' },
-    { category: 'Genitourinary (GU)', name: 'Kidney cancer (RCC)' },
+    { category: 'Genitourinary (GU)', name: 'Kidney cancer' },
     { category: 'Genitourinary (GU)', name: 'Bladder cancer' },
     { category: 'Genitourinary (GU)', name: 'Upper tract urothelial carcinoma' },
     { category: 'Genitourinary (GU)', name: 'Penile cancer' },
@@ -63,13 +67,13 @@ export const CANCER_TYPES = [
     { category: 'Skin', name: 'Cutaneous T-cell lymphoma' },
 
     // Hematologic Malignancies — Leukemias
-    { category: 'Hematologic Malignancies', name: 'Acute myeloid leukemia (AML)' },
-    { category: 'Hematologic Malignancies', name: 'Acute lymphoblastic leukemia (ALL)' },
-    { category: 'Hematologic Malignancies', name: 'Chronic lymphocytic leukemia (CLL)' },
-    { category: 'Hematologic Malignancies', name: 'Chronic myeloid leukemia (CML)' },
+    { category: 'Hematologic Malignancies', name: 'Acute myeloid leukemia' },
+    { category: 'Hematologic Malignancies', name: 'Acute lymphoblastic leukemia' },
+    { category: 'Hematologic Malignancies', name: 'Chronic lymphocytic leukemia' },
+    { category: 'Hematologic Malignancies', name: 'Chronic myeloid leukemia' },
     { category: 'Hematologic Malignancies', name: 'Hairy cell leukemia' },
     // Hematologic Malignancies — Lymphomas
-    { category: 'Hematologic Malignancies', name: 'Diffuse large B-cell lymphoma (DLBCL)' },
+    { category: 'Hematologic Malignancies', name: 'Diffuse large B-cell lymphoma' },
     { category: 'Hematologic Malignancies', name: 'Follicular lymphoma' },
     { category: 'Hematologic Malignancies', name: 'Mantle cell lymphoma' },
     { category: 'Hematologic Malignancies', name: 'Marginal zone lymphoma' },
@@ -84,8 +88,8 @@ export const CANCER_TYPES = [
     { category: 'Plasma Cell Disorders', name: 'Waldenström macroglobulinemia' },
 
     // Myeloid Disorders
-    { category: 'Myeloid Disorders', name: 'Myelodysplastic syndromes (MDS)' },
-    { category: 'Myeloid Disorders', name: 'Myeloproliferative neoplasms (MPN)' },
+    { category: 'Myeloid Disorders', name: 'Myelodysplastic syndromes' },
+    { category: 'Myeloid Disorders', name: 'Myeloproliferative neoplasms' },
     { category: 'Myeloid Disorders', name: 'Myelofibrosis' },
     { category: 'Myeloid Disorders', name: 'Polycythemia vera' },
     { category: 'Myeloid Disorders', name: 'Essential thrombocythemia' },
@@ -118,5 +122,5 @@ export const CANCER_TYPES = [
     { category: 'Endocrine', name: 'Parathyroid carcinoma' },
 
     // Neuroendocrine (Non-GI)
-    { category: 'Neuroendocrine (Non-GI)', name: 'Neuroendocrine tumors (Non-GI)' },
+    { category: 'Neuroendocrine (Non-GI)', name: 'Neuroendocrine tumors' },
 ]
