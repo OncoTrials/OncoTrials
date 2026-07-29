@@ -10,7 +10,10 @@ const {
     bumpCacheVersion,
     getAllTrialsCached,
     warmAllTrialsCache,
+    upsertTrialInAllCache,
 } = require('../services/trialsCache');
+const { requireAuth } = require('../middleware/auth');
+const { findOrganizationForEmail } = require('../services/domainVerification');
 
 // Per-page list cache TTL: 24h. Same versioning scheme as the :all cache —
 // when the importer bumps `trials:cache_version`, all `trials:v<n>:…` keys
@@ -163,6 +166,146 @@ router.get('/:id', async (req, res) => {
     res.json(data);
 });
 
+// Columns a client is allowed to modify via PATCH /trials/:id. Deliberately
+// excludes system/generated columns — id, nct_id, created_at, created_by,
+// last_fetched_at — so a client can never overwrite identity/audit data just
+// by including an unexpected key in the request body.
+const UPDATABLE_TRIAL_COLUMNS = [
+    'title', 'summary', 'status', 'sponsor',
+    'eligibility_criteria', 'eligibility_criteria_summary',
+    'biomarker_criteria', 'study_description',
+    'source', 'organization',
+    'sex', 'minimum_age', 'maximum_age', 'conditions',
+    'location_city', 'location_state', 'location_country',
+    'latitude', 'longitude', 'locations',
+    'start_date', 'primary_completion_date', 'completion_date', 'closed_at',
+];
+
+// Statuses a manual edit may set: the union of the vocabularies the rest of
+// the pipeline compares against (trialRanker's OPEN_STATUSES and the
+// importer's CLOSED_STATUSES). Stored in ClinicalTrials.gov's
+// SCREAMING_SNAKE_CASE because those consumers match exactly — a lowercase
+// "recruiting" would silently drop the trial from every /api/v1/match result.
+const VALID_TRIAL_STATUSES = new Set([
+    'RECRUITING', 'NOT_YET_RECRUITING', 'ENROLLING_BY_INVITATION',
+    'ACTIVE_NOT_RECRUITING', 'COMPLETED', 'TERMINATED', 'WITHDRAWN',
+    'SUSPENDED', 'CLOSED_TO_ACCRUAL', 'CLOSED_TO_ACCRUAL_AND_TREATMENT',
+]);
+
+// Roles allowed to edit trials, read from the server-side `users` table —
+// user_metadata.role is client-editable and never consulted here.
+const TRIAL_EDITOR_ROLES = ['practitioner', 'crc'];
+
+// PATCH /trials/:id — partial update of an existing trial.
+//
+// Authorization: Supabase-authenticated physicians/CRCs may edit only trials
+// belonging to their organization. The caller's org is derived from their
+// JWT-verified email domain against the org's valid_domains (the same check
+// registration uses) — never from client-editable user_metadata. Imported
+// ClinicalTrials.gov rows have no `organization`, so they are never editable.
+//
+// Only whitelisted columns present in the request body are written; anything
+// else in the body (including system columns, if a client sends them) is
+// silently dropped rather than erroring, so the frontend can send a superset
+// of fields (e.g. the full edit form) without this route needing to change
+// every time a form field is added or removed.
+router.patch('/:id', requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const body = req.body;
+
+    if (req.user.source !== 'supabase_jwt' || !req.user.email) {
+        return res.status(403).json({ error: 'Supabase authentication required' });
+    }
+
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return res.status(400).json({ error: 'Request body must be an object of fields to update' });
+    }
+
+    const updateData = {};
+    for (const key of UPDATABLE_TRIAL_COLUMNS) {
+        if (Object.prototype.hasOwnProperty.call(body, key)) {
+            updateData[key] = body[key];
+        }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'No updatable fields provided' });
+    }
+
+    // `title` is non-nullable in the schema — block an update that would
+    // clear it, same as the create-time validation below.
+    if ('title' in updateData && (!updateData.title || typeof updateData.title !== 'string')) {
+        return res.status(400).json({ error: 'Title cannot be empty' });
+    }
+
+    // Normalize status to the canonical uppercase form and reject values the
+    // matcher/importer wouldn't recognize. Null/empty clears the field.
+    if ('status' in updateData) {
+        if (updateData.status == null || updateData.status === '') {
+            updateData.status = null;
+        } else {
+            const normalized = String(updateData.status).trim().toUpperCase().replace(/[\s-]+/g, '_');
+            if (!VALID_TRIAL_STATUSES.has(normalized)) {
+                return res.status(400).json({ error: `Invalid status. Allowed: ${[...VALID_TRIAL_STATUSES].join(', ')}` });
+            }
+            updateData.status = normalized;
+        }
+    }
+
+    try {
+        const [trialResult, profileResult, userOrg] = await Promise.all([
+            supabase.from('trials').select('id, organization').eq('id', id).single(),
+            supabase.from('users').select('role').eq('id', req.user.id).single(),
+            findOrganizationForEmail(req.user.email),
+        ]);
+
+        if (trialResult.error || !trialResult.data) {
+            return res.status(404).json({ error: 'Trial not found' });
+        }
+        if (!profileResult.data || !TRIAL_EDITOR_ROLES.includes(profileResult.data.role)) {
+            return res.status(403).json({ error: 'Only physicians and coordinators can edit trials' });
+        }
+
+        const orgNames = userOrg ? [userOrg.name, ...(userOrg.aliases ?? [])] : [];
+        if (!trialResult.data.organization || !orgNames.includes(trialResult.data.organization)) {
+            return res.status(403).json({ error: 'You can only edit trials that belong to your organization' });
+        }
+
+        const { data, error } = await supabase
+            .from('trials')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Supabase update error:', error);
+            return res.status(500).json({ error: error.message });
+        }
+
+        if (!data) {
+            return res.status(404).json({ error: 'Trial not found' });
+        }
+
+        // Bust per-page + detail caches via version bump (same scheme as
+        // POST below), then patch the edited row into the :all cache in
+        // place — a full warmAllTrialsCache() here would re-paginate the
+        // entire ~24K-row corpus on every save. On a cold/partial cache the
+        // upsert is a no-op and the next limit=all read re-warms lazily.
+        await bumpCacheVersion('manual PATCH /trials/:id');
+        try {
+            await upsertTrialInAllCache(data);
+        } catch (err) {
+            console.error('[trials] post-update :all cache patch failed (continuing):', err?.message || err);
+        }
+
+        return res.json(data);
+    } catch (err) {
+        console.error('Server error:', err);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // POST /trials - create a new trial
 router.post('/', async (req, res) => {
     const user = req.user;
@@ -208,13 +351,14 @@ router.post('/', async (req, res) => {
             return res.status(500).json({ error: error.message });
         }
 
-        // Bust per-page caches via version bump, then refresh the :all cache
-        // so the new trial shows up immediately on Browse All.
+        // Bust per-page caches via version bump, then prepend the new trial
+        // to the :all cache in place (see the PATCH handler above for why we
+        // avoid a full re-warm here).
         await bumpCacheVersion('manual POST /trials');
         try {
-            await warmAllTrialsCache();
+            await upsertTrialInAllCache(data[0]);
         } catch (err) {
-            console.error('[trials] post-insert :all cache refresh failed (continuing):', err?.message || err);
+            console.error('[trials] post-insert :all cache patch failed (continuing):', err?.message || err);
         }
 
         return res.status(201).json(data[0]);

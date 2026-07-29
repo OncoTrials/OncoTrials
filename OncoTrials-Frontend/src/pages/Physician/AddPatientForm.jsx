@@ -11,7 +11,6 @@ function AddPatientForm({ trials, onFilter }) {
     const [biomarker, setBioMarker] = useState('');
     const [ecogScore, setEcogScore] = useState('');
     const [lineOfTreatment, setLineOfTreatment] = useState('');
-    // console.log(gender, age, trialStatus, cancerType, biomarker);
 
     const buildPatientObject = () => {
         return {

@@ -3,7 +3,7 @@ import PhysicianNavbar from '../../components/layout/PhysicianNavbar'
 import { useQuery } from '@tanstack/react-query'
 import supabase from '../../utils/SupabaseClient'
 import SearchTrialsForm from '../Patient/SearchTrialsForm'
-import TrialCards from '../Patient/TrialCards'
+import TrialCards from '../../components/shared/TrialCards'
 import PageFooter from '../../components/layout/PageFooter.jsx'
 import { getAllTrials } from '../../api/trialsApi'
 
@@ -15,13 +15,14 @@ const getUserMetadata = async () => {
 function PhysicianDashboard() {
     const [showFilters, setShowFilters] = useState(true);
 
-    const { data: response, isLoading, isError } = useQuery({
+    const { data: userData } = useQuery({
         queryKey: ['getUserMetadata'],
         queryFn: getUserMetadata,
         staleTime: 5 * 60 * 1000, // 5 minutes
         retry: false,
         refetchOnWindowFocus: false,
     });
+
 
     const { data: trials, isLoading: trialsLoading, isError: trialsError, refetch: refetchTrials } = useQuery({
         queryKey: ['getAllTrials'],
@@ -30,6 +31,7 @@ function PhysicianDashboard() {
         retry: 2,
         refetchOnWindowFocus: false,
     });
+
 
 
     // null = no search performed yet; [] = search returned no results; [...] = results
@@ -54,7 +56,7 @@ function PhysicianDashboard() {
 
     return (
         <>
-        <PhysicianNavbar user_email={response?.email} />
+        <PhysicianNavbar user_email={userData?.email} />
         <div className="flex flex-col lg:flex-row gap-4 px-3 mt-5 min-h-[650px]">
           {/* Mobile / desktop toggle */}
           <div className="w-full lg:hidden">
