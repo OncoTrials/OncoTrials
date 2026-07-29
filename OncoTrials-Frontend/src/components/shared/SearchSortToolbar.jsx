@@ -1,6 +1,6 @@
 import React from 'react';
 import LocationFilter from '../filters/LocationFilter';
-import { SORT_OPTIONS } from '../../utils/trialCardUtils';
+import { SORT_OPTIONS } from '../../utils/TrialCardUtils';
 
 // Renders only the search/location/sort controls. Callers are responsible
 // for the surrounding layout and for the result-count label, since that

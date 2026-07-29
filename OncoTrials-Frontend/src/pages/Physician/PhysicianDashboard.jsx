@@ -15,7 +15,7 @@ const getUserMetadata = async () => {
 function PhysicianDashboard() {
     const [showFilters, setShowFilters] = useState(true);
 
-    const { data: userData, isLoading, isError } = useQuery({
+    const { data: userData } = useQuery({
         queryKey: ['getUserMetadata'],
         queryFn: getUserMetadata,
         staleTime: 5 * 60 * 1000, // 5 minutes
@@ -89,7 +89,6 @@ function PhysicianDashboard() {
               browseAllPending={browseAllPending}
               onShowAll={handleShowAll}
               onRetry={refetchTrials}
-              userData={userData}
             />
           </div>
         </div>

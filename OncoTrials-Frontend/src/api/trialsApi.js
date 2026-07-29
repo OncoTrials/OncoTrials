@@ -1,3 +1,5 @@
+import supabase from '../utils/SupabaseClient';
+
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 // Fetches every trial in one response. Backend transparently paginates
@@ -12,10 +14,16 @@ export async function getAllTrials() {
     return data ?? [];
 }
 
+// Editing requires a Supabase session — the backend verifies the caller's
+// role and organization before writing anything.
 export async function updateTrial(trialId, updatedFields) {
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${API_BASE}/trials/${trialId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token || ''}`,
+        },
         body: JSON.stringify(updatedFields),
     });
     if (!res.ok) throw new Error(`Failed to update trial ${trialId}: ${res.status}`);

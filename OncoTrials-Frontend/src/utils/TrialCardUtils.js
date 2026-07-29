@@ -1,17 +1,21 @@
+const STATUS_LABELS = {
+  recruiting: "Recruiting",
+  not_yet_recruiting: "Not Yet Recruiting",
+  active_not_recruiting: "Active Not Recruiting",
+  enrolling_by_invitation: "Enrolling By Invitation",
+  completed: "Completed",
+};
+
 export const convertStatus = (status) => {
   if (!status) return "Unavailable";
-  switch (status.toLowerCase()) {
-    case "recruiting":
-      return "Recruiting";
-    case "not_yet_recruiting":
-      return "Not Yet Recruiting";
-    case "active_not_recruiting":
-      return "Active Not Recruiting";
-    case "enrolling_by_invitation":
-      return "Enrolling By Invitation";
-    default:
-      return "Unavailable";
-  }
+  const key = status.toLowerCase();
+  if (STATUS_LABELS[key]) return STATUS_LABELS[key];
+  // A present-but-unrecognized status still describes the trial — render it
+  // title-cased rather than the misleading "Unavailable".
+  return key
+    .split(/[_\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 export const getStatusColor = (status) => {
@@ -98,10 +102,14 @@ export const SORT_OPTIONS = [
   { value: "za", label: "Z → A" },
 ];
 
+// Option values are the canonical SCREAMING_SNAKE_CASE forms the database
+// stores (from ClinicalTrials.gov). Backend consumers — trialRanker's
+// OPEN_STATUSES, the importer's CLOSED_STATUSES — compare exactly, so saving
+// a lowercase status would silently drop the trial from match results.
 export const STATUS_OPTIONS = [
-    { value: "recruiting", label: "Recruiting" },
-    { value: "not_yet_recruiting", label: "Not Yet Recruiting" },
-    { value: "active_not_recruiting", label: "Active Not Recruiting" },
-    { value: "enrolling_by_invitation", label: "Enrolling By Invitation" },
-    { value: "completed", label: "Completed" },
+    { value: "RECRUITING", label: "Recruiting" },
+    { value: "NOT_YET_RECRUITING", label: "Not Yet Recruiting" },
+    { value: "ACTIVE_NOT_RECRUITING", label: "Active Not Recruiting" },
+    { value: "ENROLLING_BY_INVITATION", label: "Enrolling By Invitation" },
+    { value: "COMPLETED", label: "Completed" },
 ];

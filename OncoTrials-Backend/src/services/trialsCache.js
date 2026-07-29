@@ -45,13 +45,14 @@ const CHUNK_ROWS = Number(process.env.TRIALS_CACHE_CHUNK_ROWS) || 500;
 // Columns served by the `?limit=all` payload. Kept identical to the per-page
 // LIST_COLUMNS in trials.js so callers see the same shape regardless of which
 // endpoint variant they hit.
-const LIST_COLUMNS = [
+const LIST_COLUMN_NAMES = [
     'id', 'nct_id', 'title', 'status', 'sponsor',
     'summary', 'conditions', 'sex', 'minimum_age', 'maximum_age',
     'location_city', 'location_state', 'location_country', 'organization',
     'latitude', 'longitude', 'start_date', 'primary_completion_date',
     'completion_date', 'eligibility_criteria_summary', 'eligibility_summary_clinician_json', 'biomarker_criteria', 'created_at',
-].join(', ');
+];
+const LIST_COLUMNS = LIST_COLUMN_NAMES.join(', ');
 
 // ------------------------------------------------------------------ paging
 
@@ -191,6 +192,59 @@ async function warmAllTrialsCache() {
     }
 }
 
+/**
+ * Upsert a single trial into the chunked :all cache without re-paginating the
+ * whole corpus. Manual edits/creates (PATCH/POST /trials) call this instead of
+ * warmAllTrialsCache(), which walks all ~24K Supabase rows and rewrites every
+ * chunk on each save.
+ *
+ * Update: find the chunk containing the trial's id and rewrite just that
+ * chunk. Position is stable because the display order is created_at DESC and
+ * created_at never changes on update. Insert (id not found): prepend to chunk
+ * 0 — a new trial has the newest created_at — and bump meta.totalCount. The
+ * chunk grows past CHUNK_ROWS by one row per insert, which is harmless; the
+ * next full warm re-balances.
+ *
+ * Returns false on a cold/partial cache — nothing to patch; the next
+ * /trials?limit=all read lazily re-warms and picks the change up from
+ * Supabase. Re-setting a chunk refreshes its TTL ahead of its siblings; if
+ * the others expire first, reads see a partial cache and re-warm (the same
+ * self-healing path as any expiry).
+ */
+async function upsertTrialInAllCache(row) {
+    if (!row?.id) return false;
+    const meta = await redis.get(ALL_META_KEY);
+    if (!meta || typeof meta.chunkCount !== 'number') return false;
+
+    // Cache entries carry only the list columns, whatever extra columns the
+    // updated row has. Missing values are stored as explicit nulls so the
+    // entry shape matches what fetchAllTrialsFromSupabase produces.
+    const entry = {};
+    for (const col of LIST_COLUMN_NAMES) entry[col] = row[col] ?? null;
+
+    for (let i = 0; i < meta.chunkCount; i++) {
+        const key = `${ALL_CHUNK_KEY_PREFIX}${i}`;
+        const chunk = await redis.get(key);
+        if (!chunk) return false; // partial cache — treat as miss, same as reads
+
+        const idx = chunk.findIndex((t) => t?.id === entry.id);
+        if (idx !== -1) {
+            chunk[idx] = entry;
+            await redis.set(key, chunk, { ex: ALL_CACHE_TTL_SEC });
+            return true;
+        }
+    }
+
+    // Not in any chunk — a newly created trial. Newest created_at sorts first.
+    const firstKey = `${ALL_CHUNK_KEY_PREFIX}0`;
+    const firstChunk = await redis.get(firstKey);
+    if (!firstChunk) return false;
+    firstChunk.unshift(entry);
+    await redis.set(firstKey, firstChunk, { ex: ALL_CACHE_TTL_SEC });
+    await redis.set(ALL_META_KEY, { ...meta, totalCount: (meta.totalCount || 0) + 1 }, { ex: ALL_CACHE_TTL_SEC });
+    return true;
+}
+
 // ------------------------------------------------------- version utilities
 
 /**
@@ -223,6 +277,7 @@ module.exports = {
     CHUNK_ROWS,
     fetchAllTrialsFromSupabase,
     warmAllTrialsCache,
+    upsertTrialInAllCache,
     getAllTrialsCached,
     getCacheVersion,
     bumpCacheVersion,

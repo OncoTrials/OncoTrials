@@ -44,4 +44,25 @@ const checkDomain = async (organizationId, email) => {
     return classify(email, organization);
 };
 
-module.exports = { STATUS, checkDomain, classify, extractDomain };
+// Resolve which organization an email verifiably belongs to: the first org
+// whose valid_domains contains the email's domain (excluded_domains wins, via
+// classify). Inputs are the JWT-verified email and the server-held domain
+// lists only — never client-editable user_metadata — so the result is safe to
+// use for authorization. Returns { id, name, aliases } or null (e.g. for
+// unknown-domain registrations pending manual review).
+const findOrganizationForEmail = async (email) => {
+    const domain = extractDomain(email);
+    if (!domain) return null;
+    const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, aliases, valid_domains, excluded_domains');
+    if (error) throw error;
+    for (const org of data ?? []) {
+        if (classify(email, org) === STATUS.VALID) {
+            return { id: org.id, name: org.name, aliases: org.aliases ?? [] };
+        }
+    }
+    return null;
+};
+
+module.exports = { STATUS, checkDomain, classify, extractDomain, findOrganizationForEmail };

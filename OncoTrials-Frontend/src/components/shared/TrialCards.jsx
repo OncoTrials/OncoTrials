@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTrialById } from '../../api/trialsApi';
-import { getOrganizationName } from '../../api/organizationsApi';
-import { useNavigate } from 'react-router';
+import { getMyOrganization } from '../../api/organizationsApi';
 import { useProcessedTrials } from '../../hooks/useProcessedTrials';
 import DefaultView from './DefaultView';
 import NoResultsState from './NoResults';
@@ -11,23 +10,28 @@ import TrialResultsView, { FILTERS_ENABLED } from './TrialResultsView';
 // user starts a new view of the results (runs a sidebar search, resets the
 // form, or clicks "Browse All"). When it changes we clear the in-card keyword
 // search and jump back to the first page so each new view starts clean.
-function TrialCards({ trials, isLoading, trialsError = false, browseAllPending = false, onShowAll, onRetry, streamingTotal = 0, streamDone = false, viewResetKey = 0, userData }) {
+function TrialCards({ trials, trialsError = false, browseAllPending = false, onShowAll, onRetry, streamingTotal = 0, streamDone = false, viewResetKey = 0 }) {
     const [organizationName, setOrganizationName] = useState(null);
     const [editTrial, setEditTrial] = useState(null);
-    const navigate = useNavigate();
 
+    // The org name gates the edit-pencil on each card. It comes from
+    // /organizations/me, which resolves the org server-side from the user's
+    // verified email domain — client-editable user_metadata is never trusted.
+    // Stays null for accounts without a verified org (patients, pending
+    // manual review), so no pencils render.
     useEffect(() => {
+        let cancelled = false;
         async function loadOrganizationName() {
-            if (!userData?.organization_id) return;
             try {
-                const name = await getOrganizationName(userData.organization_id);
-                setOrganizationName(name.name);
+                const org = await getMyOrganization();
+                if (!cancelled) setOrganizationName(org?.name ?? null);
             } catch (err) {
                 console.error(err);
             }
         }
         loadOrganizationName();
-    }, [userData?.organization_id]);
+        return () => { cancelled = true; };
+    }, []);
 
     const [modalData, setModalData] = useState(null);       // partial data (list columns)
     const [fullModalData, setFullModalData] = useState(null); // full data (detail fetch)
@@ -105,7 +109,7 @@ function TrialCards({ trials, isLoading, trialsError = false, browseAllPending =
             })
             .catch(() => setFullModalData(modalData)) // fallback to partial data
             .finally(() => setModalDetailLoading(false));
-    }, [modalData?.id]);
+    }, [modalData]);
 
     const openDetailsModal = (trial, event) => {
         event?.stopPropagation();

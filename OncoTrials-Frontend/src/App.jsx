@@ -16,12 +16,10 @@ import CRCSettings from './pages/crc/CRCSettings'
 import CRCMatchingHub from './pages/crc/CRCMatchingHub';
 import CRCPatients from './pages/crc/CRCPatients'
 import './App.css'
-import PatientOnboarding from './pages/Patient/PatientOnboarding';
 import InputTrials from './components/shared/InputTrials';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import EpicLaunchLanding from './pages/epic/EpicLaunchLanding';
 import MatchResults from './pages/epic/MatchResults';
-import EditTrial from './components/forms/EditTrial';
 
 export const queryClient = new QueryClient();
 

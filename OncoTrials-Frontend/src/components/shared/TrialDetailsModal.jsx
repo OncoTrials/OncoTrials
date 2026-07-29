@@ -4,7 +4,7 @@ import {
     getStatusColor,
     getStatusDot,
     getMatchStyle,
-} from '../../utils/trialCardUtils';
+} from '../../utils/TrialCardUtils';
 
 // `modalData` is the partial (list-column) data that opened the modal.
 // `displayData` is fullModalData ?? modalData — the merged view once the

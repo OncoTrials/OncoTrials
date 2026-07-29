@@ -47,7 +47,7 @@ const jsonToText = (value) => {
 function trialToForm(trial) {
     return {
         title: trial?.title ?? "",
-        status: trial?.status ?? "",
+        status: trial?.status?.toUpperCase() ?? "",
         summary: trial?.summary ?? "",
         sponsor: trial?.sponsor ?? "",
         biomarker_criteria: trial?.biomarker_criteria ?? "",
@@ -72,7 +72,8 @@ function trialToForm(trial) {
 function formToPayload(form) {
     const payload = {
         title: form.title.trim(),
-        status: form.status || null,
+        // Canonical uppercase form — backend consumers compare exactly.
+        status: form.status ? form.status.toUpperCase() : null,
         summary: form.summary || null,
         sponsor: form.sponsor || null,
         biomarker_criteria: form.biomarker_criteria || null,
@@ -141,7 +142,6 @@ export default function EditTrial({
     const [form, setForm] = useState(trial ? trialToForm(trial) : emptyForm);
     const [initialForm, setInitialForm] = useState(trial ? trialToForm(trial) : emptyForm);
     const titleInputRef = useRef(null);
-    console.log(trial)
 
     // Reset form (and dirty-check baseline, and any stale error) whenever a
     // new trial is loaded into the modal.
